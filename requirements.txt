@@ -1,0 +1,5 @@
+requests
+lxml
+beautifulsoup4
+MechanicalSoup
+cloudscraper
