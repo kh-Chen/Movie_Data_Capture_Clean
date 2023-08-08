@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # logger.info(' - 请不要在墙内宣传本项目 - ')
     
 
-    # process_control.start()
+    process_control.start()
     logger.info("end.")
 
     
