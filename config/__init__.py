@@ -21,4 +21,4 @@ def getIntValue(key:str = "") -> int:
     return int(getStrValue(key))
 
 def getBoolValue(key:str = "") -> int:
-    return bool(getStrValue(key))
+    return bool(getIntValue(key))
