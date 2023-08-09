@@ -39,5 +39,15 @@ def parse() -> bool:
         for key in parser[section]:
             variables.conf[f"{section}.{key}"] = parser[section][key]
 
+    #--------------参数二次处理-------------
+    try:
+        proxy_switch = bool(int(variables.conf["proxy.switch"]))
+        proxy_url = variables.conf["proxy.url"]
+        logger.debug(f"proxy.switch value[{proxy_switch}]")
+        logger.debug(f"proxy.url value[{proxy_url}]")
+        variables.G_PROXIES = {'http':proxy_url, 'https':proxy_url} if proxy_switch else None
+    except:
+        logger.debug(f"proxy data parse error. default to None.")
+
     
 
