@@ -1,3 +1,4 @@
+import logger
 import config.argsparser as argsparser
 import config.iniparser as iniparser
 import config.variables as variables
@@ -18,7 +19,12 @@ def getStrValue(key:str = "") -> str:
     return getStrValAtConf(key) if getStrValAtArgs(key) == "" else getStrValAtArgs(key)
 
 def getIntValue(key:str = "") -> int:
-    return int(getStrValue(key))
+    value = getStrValue(key)
+    try:
+        return int(value)
+    except:
+        logger.error(f"config.getIntValue error! cannot parse to int. value: {value} ")
+        return None
 
 def getBoolValue(key:str = "") -> int:
     return bool(getIntValue(key))
