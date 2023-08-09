@@ -11,6 +11,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 from ..httprequest import get_html_by_form, get_html_by_scraper, request_session
 import logger
+import config
 
 # 舍弃 Amazon 源
 G_registered_storyline_site = {"airav", "avno1", "58avgo"}
@@ -32,35 +33,27 @@ class noThread(object):
 
 
 # 获取剧情介绍 从列表中的站点同时查，取值优先级从前到后
-def getStoryline(number, title=None, sites: list=None, uncensored=None):
-    start_time = time.time()
-    storyine_sites=["airav","avno1"]
-    # storyine_sites = config.getInstance().storyline_site().split(",")  # "1:airav,4:airavwiki".split(',')
-    # if uncensored:
-    #     storyine_sites = config.getInstance().storyline_uncensored_site().split(
-    #         ",") + storyine_sites  # "3:58avgo".split(',')
-    # else:
-    #     storyine_sites = config.getInstance().storyline_censored_site().split(
-    #         ",") + storyine_sites  # "2:airav,5:xcity".split(',')
-    r_dup = set()
-    sort_sites = []
-    for s in storyine_sites:
-        if s in G_registered_storyline_site and s not in r_dup:
-            sort_sites.append(s)
-            r_dup.add(s)
-    # sort_sites.sort()
-    mp_args = ((site, number, title) for site in sort_sites)
-    cores = min(len(sort_sites), os.cpu_count())
-    if cores == 0:
-        return ''
-    run_mode = 1
-    with ThreadPool(cores) if run_mode > 0 else noThread() as pool:
-        results = pool.map(getStoryline_mp, mp_args)
-    sel = ''
+def getStoryline(number, uncensored=None):
+    storyline_switch = config.getBoolValue("storyline.switch")
+    if not storyline_switch:
+        return ""
 
-    # 以下debug结果输出会写入日志
-    s = f'Storyline{G_mode_txt[run_mode]}模式运行{len(sort_sites)}个任务共耗时(含启动开销){time.time() - start_time:.3f}秒，结束于{time.strftime("%H:%M:%S")}'
+    storyline_sites = config.getStrValue("storyline.site").split(",")
+    start_time = time.time()
+    sort_sites = []
+    for s in storyline_sites:
+        if s in G_registered_storyline_site:
+            sort_sites.append(s)
+
+    mp_args = ((site, number) for site in sort_sites)   
+    run_mode = config.getIntValue("storyline.run_mode")
+    with ThreadPool(len(sort_sites)) if run_mode > 0 else noThread() as pool:
+        results = pool.map(getStoryline_mp, mp_args)
+    
+    logger.debug(f"Storyline run with mode[{run_mode}] site count [{len(sort_sites)}] used time {time.time() - start_time:.3f}s")
+    
     sel_site = ''
+    sel = ''
     for site, desc in zip(sort_sites, results):
         if isinstance(desc, str) and len(desc):
             if not is_japanese(desc):
@@ -68,16 +61,13 @@ def getStoryline(number, title=None, sites: list=None, uncensored=None):
                 break
             if not len(sel_site):
                 sel_site, sel = site, desc
-    for site, desc in zip(sort_sites, results):
-        sl = len(desc) if isinstance(desc, str) else 0
-        s += f'，[选中{site}字数:{sl}]' if site == sel_site else f'，{site}字数:{sl}' if sl else f'，{site}:空'
-    
-    logger.debug(s)
+        
+    logger.debug(f"selected site [{sel_site}], len [{len(sel) if isinstance(sel, str) else 0}]")
     return sel
 
 
 def getStoryline_mp(args):
-    (site, number, title) = args
+    (site, number) = args
     start_time = time.time()
     storyline = None
     if not isinstance(site, str):
@@ -89,13 +79,7 @@ def getStoryline_mp(args):
     elif site == "58avgo":
         storyline = getStoryline_58avgo(number)
     
-    logger.debug("[!]MP 线程[{}]运行{:.3f}秒，结束于{}返回结果: {}".format(
-            site,
-            time.time() - start_time,
-            time.strftime("%H:%M:%S"),
-            storyline if isinstance(storyline, str) and len(storyline) else '[空]')
-        )
-        
+    logger.debug(f"Storyline thread site [{site}] used time {time.time() - start_time:.3f}s result len [{len(storyline) if isinstance(storyline, str) else 0}]")
     return storyline
 
 
