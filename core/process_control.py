@@ -9,8 +9,8 @@ import config
 import core.scraper as scraper
 
 def signal_handler(*args):
-    print('[!]Ctrl+C detected, Exit.')
-    # os._exit(0)
+    logger.info("Ctrl+C detected, Exit.")
+    os._exit(0)
 
 def start():
     logger.debug("process_control start.")

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import logger
 import mechanicalsoup
 import requests
 from requests.adapters import HTTPAdapter
@@ -33,15 +33,16 @@ def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type:
                 result.encoding = encoding or result.apparent_encoding
                 return result.text
         except Exception as e:
-            print(f"[-]Connect: {url} retry {i + 1}/{retry}")
+            logger.info(f"Connect: {url} retry {i + 1}/{retry}")
+            logger
             errors = str(e)
     
     if "getaddrinfo failed" in errors:
-        print("[-]Connect Failed! Please Check your proxy config")
-        print("[-]" + errors)
+        logger.info("Connect Failed! Please Check your proxy config")
     else:
-        print("[-]" + errors)
-        print('[-]Connect Failed! Please check your Proxy or Network!')
+        logger.info('Connect Failed! Please check your Proxy or Network!')
+        
+    logger.info(errors)
     raise Exception('Connect Failed')
 
 
@@ -65,15 +66,14 @@ def post(url: str, data: dict=None, files=None, cookies=None, ua: str=None, retu
                 result.encoding = encoding or result.apparent_encoding
                 return result
         except Exception as e:
-            print(f"[-]Connect: {url} retry {i + 1}/{retry}")
+            logger.info(f"Connect: {url} retry {i + 1}/{retry}")
             errors = str(e)
             
         if "getaddrinfo failed" in errors:
-            print("[-]Connect Failed! Please Check your proxy config")
-            print("[-]" + errors)
+            logger.info("Connect Failed! Please Check your proxy config")
         else:
-            print("[-]" + errors)
-            print('[-]Connect Failed! Please check your Proxy or Network!')
+            logger.info('Connect Failed! Please check your Proxy or Network!')
+        logger.info(errors)
         raise Exception('Connect Failed')
 
 
@@ -147,9 +147,9 @@ def get_html_by_form(url, form_select: str = None, fields: dict = None, cookies:
             result.encoding = encoding or "utf-8"
             return response.text
     except requests.exceptions.ProxyError:
-        print("[-]get_html_by_form() Proxy error! Please check your Proxy")
+        logger.info("[-]get_html_by_form() Proxy error! Please check your Proxy")
     except Exception as e:
-        print(f'[-]get_html_by_form() Failed! {e}')
+        logger.info(f'[-]get_html_by_form() Failed! {e}')
     return None
 
 # storyline javdb only
@@ -183,7 +183,7 @@ def get_html_by_scraper(url: str = None, cookies: dict = None, ua: str = None, r
             result.encoding = encoding or "utf-8"
             return result.text
     except requests.exceptions.ProxyError:
-        print("[-]get_html_by_scraper() Proxy error! Please check your Proxy")
+        logger.info("get_html_by_scraper() Proxy error! Please check your Proxy")
     except Exception as e:
-        print(f"[-]get_html_by_scraper() failed. {e}")
+        logger.info(f"get_html_by_scraper() failed. {e}")
     return None

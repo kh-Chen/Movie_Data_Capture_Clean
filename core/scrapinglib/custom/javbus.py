@@ -8,6 +8,7 @@ import traceback
 from lxml import etree
 from urllib.parse import urljoin
 from ..parser import Parser
+import logger
 
 class Javbus(Parser):
     
@@ -40,7 +41,7 @@ class Javbus(Parser):
             result = self.dictformat(htmltree)
             return result
         except Exception as e:
-            print(e)
+            logger.info(f"javbus search error. message: {e}")
             traceback.format_exc()
             return 404
             # self.searchUncensored(number)
