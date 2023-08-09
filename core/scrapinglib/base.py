@@ -5,6 +5,8 @@ import traceback
 from logging import Logger
 
 from .parser import Parser
+import logger
+import config
 
 class Scraper:
 
@@ -14,41 +16,29 @@ class Scraper:
         'getchu', 'gcolle', 'javday', 'pissplay', 'javmenu', 'pcolle', 'caribpr'
     ]
 
-    proxies = None
-    verify = None
-    morestoryline=None
+    def __init__(self):
+        pass
 
-    def __init__(self, logger:Logger):
-        self.logger = logger
-
-    def set_proxies(self, proxies):
-        self.proxies = proxies
-    
-    def set_verify(self,verify):
-        self.verify = verify
-
-    def set_morestoryline(self,morestoryline):
-        self.morestoryline = morestoryline
-    
-    def search(self, number, available_sources):
+    def search(self, number):
+        available_sources = config.getStrValue("priority.website")
         sources = self.checkAdultSources(number, available_sources)
         json_data= {}
         for source in sources:
-            self.logger.debug(f'using source [{source}]')
+            logger.debug(f'using source [{source}]')
             try:
                 module = importlib.import_module('.' + source, 'core.scrapinglib.custom')
                 parser_type = getattr(module, source.capitalize())
-                parser: Parser = parser_type(self.logger, proxies=self.proxies, verify=self.verify, morestoryline=self.morestoryline)
+                parser: Parser = parser_type()
                 data = parser.search(number)
                 if data == 404:
                     continue
                 json_data = json.loads(data)
             except Exception as e:
-                self.logger.error(f"scrape [{number}] from [{source}] error. info: {e}")
-                self.logger.debug(f"{traceback.format_exc()}")
+                logger.error(f"scrape [{number}] from [{source}] error. info: {e}")
+                logger.debug(f"{traceback.format_exc()}")
             
             if self.get_data_state(json_data):
-                self.logger.debug(f"Find movie [{number}] metadata on website '{source}' success.")
+                logger.debug(f"Find movie [{number}] metadata on website '{source}' success.")
                 break
         
         # TODO javdb的封面有水印，如果可以用其他源的封面来替换javdb的封面
@@ -109,7 +99,7 @@ class Scraper:
             if not s in self.adult_full_sources:
                 todel.append(s)
         if len(todel) != 0: 
-            self.logger.info(f'Source Not Exist , auto remove: {todel}')
+            logger.info(f'Source Not Exist , auto remove: {todel}')
             return list(set(sources)-set(todel))
         else:
             return sources

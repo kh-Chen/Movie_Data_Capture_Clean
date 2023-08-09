@@ -8,6 +8,8 @@ from logging import Logger
 # import config
 from . import httprequest
 from .utils import getTreeElement, getTreeAll
+import logger
+import config
 
 class Parser:
     """ 基础刮削类
@@ -39,8 +41,7 @@ class Parser:
     expr_userrating = ''
     expr_uservotes = ''
 
-    def __init__(self, logger:Logger, proxies=None, verify=None, morestoryline=None):
-        self.logger = logger
+    def __init__(self):
         # 推荐剪切poster封面:
         # `0` 复制cover
         # `1` 裁剪cover 
@@ -49,11 +50,8 @@ class Parser:
         self.uncensored = False
         self.allow_number_change = False
         # update
-        self.proxies = proxies
-        self.verify = verify
         self.extraheader = None
         self.cookies = None
-        self.morestoryline = morestoryline
         self.extraInit()
 
     def extraInit(self):
@@ -89,7 +87,7 @@ class Parser:
     def getHtml(self, url, type = None):
         """ 访问网页
         """
-        resp = httprequest.get(url, cookies=self.cookies, proxies=self.proxies, extra_headers=self.extraheader, verify=self.verify, return_type=type)
+        resp = httprequest.get(url, cookies=self.cookies, extra_headers=self.extraheader, return_type=type)
         if '<title>404 Page Not Found' in resp \
             or '<title>未找到页面' in resp \
             or '404 Not Found' in resp \
@@ -136,7 +134,7 @@ class Parser:
             }
             dic = self.extradict(dic)
         except Exception as e:
-            self.logger.debug(f"get data error. message: {e}")
+            logger.debug(f"get data error. message: {e}")
             dic = {"title": ""}
         js = json.dumps(dic, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         return js
