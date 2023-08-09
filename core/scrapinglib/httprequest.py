@@ -5,18 +5,32 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from cloudscraper import create_scraper
+import config
 
 G_USER_AGENT = r'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.133 Safari/537.36'
 G_DEFAULT_TIMEOUT = 10
+G_DEFAULT_RETRY = 3
+
+#
+# 本应用中代理为全局配置，应用层不应关心其是否开启。在本类中自动读取配置文件。
+#
 
 
-def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type: str = None, encoding: str = None,
-        retry: int = 3, timeout: int = G_DEFAULT_TIMEOUT, proxies=None, verify=None):
-    """
-    网页请求核心函数
+def get_network_params():
+    proxies = config.variables.G_PROXIES
+    cacert_file = config.getStrValue("proxy.cacert_file")
+    timeout = config.getIntValue("proxy.timeout")
+    retry = config.getIntValue("proxy.retry")
 
-    是否使用代理应由上层处理
-    """
+    cacert_file = None if cacert_file == '' else cacert_file
+    timeout = G_DEFAULT_TIMEOUT if timeout is None else timeout
+    retry = G_DEFAULT_RETRY if retry is None else retry
+
+    return proxies, timeout, retry, cacert_file
+
+
+def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type: str = None, encoding: str = None):
+    proxies, timeout, retry, verify = get_network_params()
     errors = ""
     headers = {"User-Agent": ua or G_USER_AGENT}
     if extra_headers != None:
@@ -46,11 +60,8 @@ def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type:
     raise Exception('Connect Failed')
 
 
-def post(url: str, data: dict=None, files=None, cookies=None, ua: str=None, return_type: str=None, encoding: str=None,
-         retry: int=3, timeout: int=G_DEFAULT_TIMEOUT, proxies=None, verify=None):
-    """
-    是否使用代理应由上层处理
-    """
+def post(url: str, data: dict=None, files=None, cookies=None, ua: str=None, return_type: str=None, encoding: str=None):
+    proxies, timeout, retry, verify = get_network_params()
     errors = ""
     headers = {"User-Agent": ua or G_USER_AGENT}
 
@@ -92,10 +103,8 @@ class TimeoutHTTPAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-def request_session(cookies=None, ua: str=None, retry: int=3, timeout: int=G_DEFAULT_TIMEOUT, proxies=None, verify=None):
-    """
-    keep-alive
-    """
+def request_session(cookies=None, ua: str=None):
+    proxies, timeout, retry, verify = get_network_params()
     session = requests.Session()
     retries = Retry(total=retry, connect=retry, backoff_factor=1,
                     status_forcelist=[429, 500, 502, 503, 504])
@@ -113,8 +122,8 @@ def request_session(cookies=None, ua: str=None, retry: int=3, timeout: int=G_DEF
 
 # storyline xcity only
 def get_html_by_form(url, form_select: str = None, fields: dict = None, cookies: dict = None, ua: str = None,
-                     return_type: str = None, encoding: str = None,
-                     retry: int = 3, timeout: int = G_DEFAULT_TIMEOUT, proxies=None, verify=None):
+                     return_type: str = None, encoding: str = None):
+    proxies, timeout, retry, verify = get_network_params()
     session = requests.Session()
     if isinstance(cookies, dict) and len(cookies):
         requests.utils.add_dict_to_cookiejar(session.cookies, cookies)
@@ -153,8 +162,8 @@ def get_html_by_form(url, form_select: str = None, fields: dict = None, cookies:
     return None
 
 # storyline javdb only
-def get_html_by_scraper(url: str = None, cookies: dict = None, ua: str = None, return_type: str = None,
-                        encoding: str = None, retry: int = 3, proxies=None, timeout: int = G_DEFAULT_TIMEOUT, verify=None):
+def get_html_by_scraper(url: str = None, cookies: dict = None, ua: str = None, return_type: str = None, encoding: str = None):
+    proxies, timeout, retry, verify = get_network_params()
     session = create_scraper(browser={'custom': ua or G_USER_AGENT, })
     if isinstance(cookies, dict) and len(cookies):
         requests.utils.add_dict_to_cookiejar(session.cookies, cookies)
