@@ -32,7 +32,7 @@ class noThread(object):
 
 
 # 获取剧情介绍 从列表中的站点同时查，取值优先级从前到后
-def getStoryline(number, title=None, sites: list=None, uncensored=None, proxies=None, verify=None):
+def getStoryline(number, title=None, sites: list=None, uncensored=None):
     start_time = time.time()
     storyine_sites=["airav","avno1"]
     # storyine_sites = config.getInstance().storyline_site().split(",")  # "1:airav,4:airavwiki".split(',')
@@ -49,7 +49,7 @@ def getStoryline(number, title=None, sites: list=None, uncensored=None, proxies=
             sort_sites.append(s)
             r_dup.add(s)
     # sort_sites.sort()
-    mp_args = ((site, number, title, proxies, verify) for site in sort_sites)
+    mp_args = ((site, number, title) for site in sort_sites)
     cores = min(len(sort_sites), os.cpu_count())
     if cores == 0:
         return ''
@@ -77,17 +77,17 @@ def getStoryline(number, title=None, sites: list=None, uncensored=None, proxies=
 
 
 def getStoryline_mp(args):
-    (site, number, title, proxies, verify) = args
+    (site, number, title) = args
     start_time = time.time()
     storyline = None
     if not isinstance(site, str):
         return storyline
     elif site == "airav":
-        storyline = getStoryline_airav(number, proxies, verify)
+        storyline = getStoryline_airav(number)
     elif site == "avno1":
-        storyline = getStoryline_avno1(number, proxies, verify)
+        storyline = getStoryline_avno1(number)
     elif site == "58avgo":
-        storyline = getStoryline_58avgo(number, proxies, verify)
+        storyline = getStoryline_58avgo(number)
     
     logger.debug("[!]MP 线程[{}]运行{:.3f}秒，结束于{}返回结果: {}".format(
             site,
@@ -99,11 +99,11 @@ def getStoryline_mp(args):
     return storyline
 
 
-def getStoryline_airav(number, proxies, verify):
+def getStoryline_airav(number):
     try:
         site = secrets.choice(('airav.cc','airav4.club'))
         url = f'https://{site}/searchresults.aspx?Search={number}&Type=0'
-        session = request_session(proxies=proxies, verify=verify)
+        session = request_session()
         res = session.get(url)
         if not res:
             raise ValueError(f"get_html_by_session('{url}') failed")
@@ -133,17 +133,14 @@ def getStoryline_airav(number, proxies, verify):
     return None
 
 
-def getStoryline_58avgo(number, proxies, verify):
+def getStoryline_58avgo(number):
     try:
         url = 'http://58avgo.com/cn/index.aspx' + secrets.choice([
                 '', '?status=3', '?status=4', '?status=7', '?status=9', '?status=10', '?status=11', '?status=12',
                 '?status=1&Sort=Playon', '?status=1&Sort=dateupload', 'status=1&Sort=dateproduce'
         ]) # 随机选一个，避免网站httpd日志中单个ip的请求太过单一
         kwd = number[:6] if re.match(r'\d{6}[\-_]\d{2,3}', number) else number
-        result, browser = get_html_by_form(url,
-            fields = {'ctl00$TextBox_SearchKeyWord' : kwd},
-            proxies=proxies, verify=verify,
-            return_type = 'browser')
+        result, browser = get_html_by_form(url, fields = {'ctl00$TextBox_SearchKeyWord' : kwd}, return_type = 'browser')
         if not result:
             raise ValueError(f"get_html_by_form('{url}','{number}') failed")
         if f'searchresults.aspx?Search={kwd}' not in browser.url:
@@ -172,13 +169,13 @@ def getStoryline_58avgo(number, proxies, verify):
     return ''
 
 
-def getStoryline_avno1(number, proxies, verify):  #获取剧情介绍 从avno1.cc取得
+def getStoryline_avno1(number):  #获取剧情介绍 从avno1.cc取得
     try:
         site = secrets.choice(['1768av.club','2nine.net','av999.tv','avno1.cc',
             'hotav.biz','iqq2.xyz','javhq.tv',
             'www.hdsex.cc','www.porn18.cc','www.xxx18.cc',])
         url = f'http://{site}/cn/search.php?kw_type=key&kw={number}'
-        lx = fromstring(get_html_by_scraper(url, proxies=proxies, verify=verify))
+        lx = fromstring(get_html_by_scraper(url))
         descs = lx.xpath('//div[@class="type_movie"]/div/ul/li/div/@data-description')
         titles = lx.xpath('//div[@class="type_movie"]/div/ul/li/div/a/h3/text()')
         if not descs or not len(descs):
