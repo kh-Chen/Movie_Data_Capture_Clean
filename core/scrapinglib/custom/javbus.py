@@ -9,6 +9,7 @@ from lxml import etree
 from urllib.parse import urljoin
 from ..parser import Parser
 import logger
+from .storyline import getStoryline
 
 class Javbus(Parser):
     
@@ -119,8 +120,5 @@ class Javbus(Parser):
         return tags[2:]
 
     def getOutline(self, htmltree):
-        if self.morestoryline:
-            from .storyline import getStoryline
-            return getStoryline(self.number , uncensored = self.uncensored,
-                                proxies=self.proxies, verify=self.verify)
-        return ''
+        return getStoryline(self.number , uncensored = self.uncensored)
+        

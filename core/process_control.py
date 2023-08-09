@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import signal
-
+from unicodedata import category
 
 import logger
 import config
@@ -16,7 +16,6 @@ def start():
     logger.debug("process_control start.")
     
     # signal.signal(signal.SIGINT, signal_handler)
-    #TODO 中文简繁转换器
 
     #---------------------------------------------------
     search_for_number = config.getStrValAtArgs("search_for_number")
@@ -47,10 +46,28 @@ def search_mode(numbers:str):
     number_arr = numbers.split(",")
     for number in number_arr:
         json_data = scraper.get_base_data_by_number(number)
-        logger.debug(f"json data for number [{number}]: \n {json_data}")
+        logger.debug(f"json data for number [{number}]: ")
+        try:
+            logger.debug("-------- INFO -------")
+            for i, v in json_data.items():
+                if i == 'outline':
+                    logger.debug(f'{"%-19s" % i} : {len(v)} characters')
+                    continue
+                if i == 'actor_photo' or i == 'year':
+                    continue
+                if i == 'extrafanart':
+                    logger.debug(f'{"%-19s" % i} : {len(v)} links')
+                    continue
+                logger.debug(f'{i:<{cn_space(i, 19)}} : {v}')
+
+            logger.debug("-------- INFO -------")
+        except:
+            pass
         #TODO 自定义睡眠时间
         time.sleep(1)
 
+def cn_space(v: str, n: int) -> int:
+    return n - [category(c) for c in v].count('Lo')
 
 
     

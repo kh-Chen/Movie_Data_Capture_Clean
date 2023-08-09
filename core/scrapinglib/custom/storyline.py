@@ -54,6 +54,7 @@ def getStoryline(number, uncensored=None):
     
     sel_site = ''
     sel = ''
+    # logger.debug(f"{results}")
     for site, desc in zip(sort_sites, results):
         if isinstance(desc, str) and len(desc):
             if not is_japanese(desc):
