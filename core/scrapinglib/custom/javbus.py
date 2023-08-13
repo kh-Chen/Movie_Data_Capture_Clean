@@ -33,10 +33,14 @@ class Javbus(Parser):
     expr_tags = '/html/head/meta[@name="keywords"]/@content'
     expr_uncensored = '//*[@id="navbar"]/ul[1]/li[@class="active"]/a[contains(@href,"uncensored")]'
 
+    def __init__(self):
+        super(Javbus, self).__init__()
+        self.site = 'https://www.dmmbus.lol/'
+
     def search(self, number):
         self.number = number
         try:
-            self.detailurl = 'https://www.seejav.cfd/' + number
+            self.detailurl = self.site + number
             self.htmlcode = self.getHtml(self.detailurl)
             htmltree = etree.fromstring(self.htmlcode,etree.HTMLParser())
             result = self.dictformat(htmltree)
@@ -80,7 +84,7 @@ class Javbus(Parser):
             return self.getTreeElement(htmltree, self.expr_studio)
 
     def getCover(self, htmltree):
-        return urljoin("https://www.seejav.cfd", super().getCover(htmltree)) 
+        return urljoin(self.site, super().getCover(htmltree)) 
 
     def getRuntime(self, htmltree):
         return super().getRuntime(htmltree).strip(" ['']分鐘")
@@ -100,7 +104,7 @@ class Javbus(Parser):
             if "nowprinting.gif" in p:
                 continue
             t = i.attrib['title']
-            d[t] = urljoin("https://www.seejav.cfd", p)
+            d[t] = urljoin(self.site, p)
         return d
 
     def getDirector(self, htmltree):
