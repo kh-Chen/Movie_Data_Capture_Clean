@@ -52,10 +52,7 @@ class Parser:
         # update
         self.extraheader = None
         self.cookies = None
-        self.extraInit()
 
-    def extraInit(self):
-        pass
 
     def search(self, number):
         """ 查询番号
@@ -117,7 +114,7 @@ class Parser:
                 'runtime': self.getRuntime(htmltree),
                 'director': self.getDirector(htmltree),
                 'actor': self.getActors(htmltree),
-                'actor_photo': self.getActorPhoto(htmltree),
+                # 'actor_photo': self.getActorPhoto(htmltree),
                 'cover': self.getCover(htmltree),
                 'cover_small': self.getSmallCover(htmltree),
                 'extrafanart': self.getExtrafanart(htmltree),
