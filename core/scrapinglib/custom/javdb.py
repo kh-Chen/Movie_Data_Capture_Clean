@@ -3,7 +3,7 @@
 import re
 from urllib.parse import urljoin
 from lxml import etree
-from ..httprequest import request_session
+from utils.httprequest import request_session
 from ..parser import Parser
 from .storyline import getStoryline
 

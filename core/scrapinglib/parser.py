@@ -6,8 +6,7 @@ from lxml import etree, html
 from logging import Logger
 
 # import config
-from . import httprequest
-from .utils import getTreeElement, getTreeAll
+from utils import httprequest
 import logger
 import config
 
@@ -248,13 +247,31 @@ class Parser:
 
     def getTreeElement(self, tree: html.HtmlElement, expr, index=0):
         """ 根据表达式从`xmltree`中获取匹配值,默认 index 为 0
+        :param tree (html.HtmlElement)
+        :param expr 
+        :param index
         """
-        return getTreeElement(tree, expr, index)
+        if expr == '':
+            return ''
+        result = tree.xpath(expr)
+        try:
+            return result[index]
+        except:
+            return ''
 
     def getTreeAll(self, tree: html.HtmlElement, expr):
         """ 根据表达式从`xmltree`中获取全部匹配值
+        :param tree (html.HtmlElement)
+        :param expr 
+        :param index
         """
-        return getTreeAll(tree, expr)
+        if expr == '':
+            return []
+        result = tree.xpath(expr)
+        try:
+            return result
+        except:
+            return []
 
     def getTreeElementbyExprs(self, tree: html.HtmlElement, expr, expr2=''):
         """ 多个表达式获取element

@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 from lxml.html import fromstring
 from multiprocessing.dummy import Pool as ThreadPool
 
-from ..httprequest import get_html_by_form, get_html_by_scraper, request_session
+from utils.httprequest import get_html_by_form, get_html_by_scraper, request_session
 import logger
 import config
 
