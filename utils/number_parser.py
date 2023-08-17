@@ -1,8 +1,9 @@
 import os
 import re
 import sys
-# import config
 import typing
+
+import logger
 
 G_spat = re.compile(
     "^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
@@ -11,34 +12,11 @@ G_spat = re.compile(
     re.IGNORECASE)
 
 
-def get_number(debug: bool, file_path: str) -> str:
+def get_number(file_path: str) -> str:
     """
-    从文件路径中提取番号 from number_parser import get_number
-    >>> get_number(False, "/Users/Guest/AV_Data_Capture/snis-829.mp4")
-    'snis-829'
-    >>> get_number(False, "/Users/Guest/AV_Data_Capture/snis-829-C.mp4")
-    'snis-829'
-    >>> get_number(False, "/Users/Guest/AV_Data_Capture/[脸肿字幕组][PoRO]牝教師4～穢された教壇～ 「生意気ドジっ娘女教師・美結～高飛車ハメ堕ち2濁金」[720p][x264_aac].mp4")
-    '牝教師4～穢された教壇～ 「生意気ドジっ娘女教師・美結～高飛車ハメ堕ち2濁金」'
-    >>> get_number(False, "C:¥Users¥Guest¥snis-829.mp4")
-    'snis-829'
-    >>> get_number(False, "C:¥Users¥Guest¥snis-829-C.mp4")
-    'snis-829'
-    >>> get_number(False, "./snis-829.mp4")
-    'snis-829'
-    >>> get_number(False, "./snis-829-C.mp4")
-    'snis-829'
-    >>> get_number(False, ".¥snis-829.mp4")
-    'snis-829'
-    >>> get_number(False, ".¥snis-829-C.mp4")
-    'snis-829'
-    >>> get_number(False, "snis-829.mp4")
-    'snis-829'
-    >>> get_number(False, "snis-829-C.mp4")
-    'snis-829'
+    从文件路径中提取番号
     """
     filepath = os.path.basename(file_path)
-    # debug True 和 False 两块代码块合并，原因是此模块及函数只涉及字符串计算，没有IO操作，debug on时输出导致异常信息即可
     try:
 
         file_number = get_number_by_dict(filepath)
@@ -84,8 +62,7 @@ def get_number(debug: bool, file_path: str) -> str:
             except:
                 return str(re.search(r'(.+?)\.', filepath)[0])
     except Exception as e:
-        if debug:
-            print(f'[-]Number Parser exception: {e} [{file_path}]')
+        logger.error(f'[-]Number Parser exception: {e} [{file_path}]')
         return None
         
 

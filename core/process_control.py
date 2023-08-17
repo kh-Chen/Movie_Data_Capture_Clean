@@ -1,73 +1,46 @@
 import os
+import re
 import sys
 import time
+import typing
 import signal
-from unicodedata import category
 
+from pathlib import Path
 import logger
 import config
-import core.scraper as scraper
 
-def signal_handler(*args):
-    logger.info("Ctrl+C detected, Exit.")
-    os._exit(0)
+
 
 def start():
     logger.debug("process_control start.")
+    # TODO 检查更新 ------------------------------------
     
-    # signal.signal(signal.SIGINT, signal_handler)
-
-    #---------------------------------------------------
+    # 指定番号查询信息  ---------------------------------
     search_for_number = config.getStrValAtArgs("search_for_number")
     if search_for_number != '':
         logger.info(f"Find --search in the parameter list. value is [{search_for_number}]. run in search mode!")
-        search_mode(search_for_number)
+        from . import mode_search
+        mode_search.run(search_for_number)
         return
-    #---------------------------------------------------
-
-
-    # main_mode = config.getIntValue("common.main_mode")
-    # logger.debug(f"common.main_mode [{main_mode}]")
-    # if main_mode not in (1, 2, 3):
-    #     logger.error(f"Main mode must be 1 or 2 or 3! ")
-    #     return 
     
-    #TODO 检查更新
-    #TODO 再运行延迟
-    # create_failed_folder()
-    # if not os.path.exists(failed_folder):
-    #     try:
-    #         os.makedirs(failed_folder)
-    #     except:
-    #         print(f"[-]Fatal error! Can not make folder '{failed_folder}'")
-    #         os._exit(0)
+    # TODO 指定文件刮削 ---------------------------------
 
-def search_mode(numbers:str):
-    number_arr = numbers.split(",")
-    for number in number_arr:
-        json_data = scraper.get_base_data_by_number(number)
-        logger.debug(f"json data for number [{number}]: ")
-        try:
-            logger.debug("-------- INFO -------")
-            for i, v in json_data.items():
-                if i == 'outline':
-                    logger.debug(f'{"%-19s" % i} : {len(v)} characters')
-                    continue
-                if i == 'actor_photo' or i == 'year':
-                    continue
-                if i == 'extrafanart':
-                    logger.debug(f'{"%-19s" % i} : {len(v)} links')
-                    continue
-                logger.debug(f'{i:<{cn_space(i, 19)}} : {v}')
+    # 检查配置文件参数合法性    --------------------------
+    main_mode = config.getIntValue("common.main_mode")
+    logger.debug(f"common.main_mode [{main_mode}]")
+    if main_mode not in (1, 2, 3):
+        logger.error(f"Main mode must be 1 or 2 or 3! ")
+        return 
 
-            logger.debug("-------- INFO -------")
-        except:
-            pass
-        #TODO 自定义睡眠时间
-        time.sleep(1)
-
-def cn_space(v: str, n: int) -> int:
-    return n - [category(c) for c in v].count('Lo')
-
-
+    # 根据配置寻找将会刮削的所有视频    -------------------
+    if config.getBoolValAtArgs("list_movie"):
+        logger.info(f"Find --list-movie in the parameter list. Find movies by config file and print it.")
+        from . import mode_list_movie
+        mode_list_movie.run()
+        return
     
+    # 默认模式  -----------------------------------------
+    logger.info(f"run in default mode. ")
+    from . import mode_normal
+    mode_normal.run()
+    return
