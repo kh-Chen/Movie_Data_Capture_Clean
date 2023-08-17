@@ -23,7 +23,7 @@ def getIntValue(key:str = "") -> int:
     try:
         return int(value)
     except:
-        logger.error(f"config.getIntValue error! cannot parse to int. value: {value} ")
+        logger.error(f"config.getIntValue error! cannot parse to int. key: [{key}] value: {value} ")
         return None
 
 def getBoolValue(key:str = "") -> int:
