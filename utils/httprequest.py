@@ -48,7 +48,6 @@ def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type:
                 return result.text
         except Exception as e:
             logger.info(f"Connect: {url} retry {i + 1}/{retry}")
-            logger
             errors = str(e)
     
     if "getaddrinfo failed" in errors:
@@ -196,3 +195,31 @@ def get_html_by_scraper(url: str = None, cookies: dict = None, ua: str = None, r
     except Exception as e:
         logger.info(f"get_html_by_scraper() failed. {e}")
     return None
+
+
+
+def download(url, filepath, ua: str = None, extra_headers=None, cookies=None):
+    proxies, timeout, retry, verify = get_network_params()
+    headers = {"User-Agent": ua or G_USER_AGENT}
+    if extra_headers != None:
+        headers.update(extra_headers)
+    errors = ""
+    for i in range(3):
+        try:
+            r = requests.get(url=url, headers=headers, timeout=timeout, proxies=proxies,
+                                  verify=verify, cookies=cookies)
+            if r.status_code == 200:
+                with open(filepath, 'wb') as f:
+                    f.write(r.content)
+                return 
+        except Exception as e:
+            errors = str(e)
+        logger.info(f"Connect: {url} retry {i + 1}/{retry}")
+    
+    if "getaddrinfo failed" in errors:
+        logger.info("Connect Failed! Please Check your proxy config")
+    else:
+        logger.info('Connect Failed! Please check your Proxy or Network!')
+        
+    logger.info(errors)
+    raise Exception('Connect Failed')
