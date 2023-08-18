@@ -25,3 +25,21 @@ def create_folder(folder):
             os.makedirs(folder)
         except:
             raise RuntimeError()
+        
+def escape_path(path, escape_literals: str):  # Remove escape literals
+    backslash = '\\'
+    for literal in escape_literals:
+        path = path.replace(backslash + literal, '')
+    return path
+
+def image_ext(url):
+    try:
+        ext = os.path.splitext(url)[-1]
+        if ext in {'.jpg', '.jpge', '.bmp', '.png', '.gif'}:
+            return ext
+        return ".jpg"
+    except:
+        return ".jpg"
+    
+def file_not_exist_or_empty(filepath) -> bool:
+    return not os.path.isfile(filepath) or os.path.getsize(filepath) == 0
