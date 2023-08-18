@@ -5,13 +5,19 @@ from pathlib import Path
 import logger
 import config
 from config import constant
+from utils.number_parser import get_number
 from utils.functions import file_modification_days
 
 def run():
     list = movie_lists()
     logger.info("get movie list: ")
     for str in list:
-        logger.info(str)
+        try: 
+            number = get_number(str)
+            print(f"{number:{10}}|{str}")
+        except Exception as e:
+            logger.error(f"getnumber error. file: {str} {e}")
+        
 
 def movie_lists() -> typing.List[str]:
 
