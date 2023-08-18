@@ -31,7 +31,7 @@ def run():
     for movie_path in movie_list: 
         processed = processed + 1
         percentage = str(processed / int(count_all) * 100)[:4] + '%'
-        logger.info(f"running {percentage} [{processed}/{count_all}]")
+        logger.info(f"-----------running {percentage} [{processed}/{count_all}]-----------")
         do_capture_with_single_file(movie_path)
         if processed >= count_all:
             logger.info("Stop counter triggered!")
@@ -115,6 +115,13 @@ def main_mode_1(movie_path, json_data):
     
     movie_suffix = os.path.splitext(movie_path)[-1]
     target_file_name = f"{number}{'-C' if cn_sub else ''}"
+
+    try:
+        print_nfo_file(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path,json_data)
+    except Exception as e:
+        logger.error(f"print_files error. [{e}]")
+        moveFailedFolder(movie_path)
+        return
     
     # TODO link mode
     shutil.move(movie_path, os.path.join(movie_target_dir, target_file_name + movie_suffix))
@@ -122,15 +129,13 @@ def main_mode_1(movie_path, json_data):
     for sub_suffix in constant.G_SUB_SUFFIX:
         l = len(movie_path)-len(movie_suffix)
         sub_path = movie_path[:l]+sub_suffix
-        logger.debug(f"sub_path [{sub_path}]")
         if os.path.isfile(sub_path):
-            shutil.move(sub_path, os.path.join(movie_target_dir, target_file_name + sub_suffix))
+            target_sub_path = os.path.join(movie_target_dir, target_file_name + sub_suffix)
+            logger.info(f"find sub file at [{sub_path}], move to [{target_sub_path}]")
+            shutil.move(sub_path, target_sub_path)
     
-    try:
-        print_files(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path)
-    except Exception as e:
-        logger.error(f"print_files error. [{e}]")
-        
+    
+
 
 
 def moveFailedFolder(movie_path):
@@ -181,6 +186,7 @@ def image_download(url:str, full_filepath:str) -> bool:
 # 剧照下载成功，否则移动到failed
 def extrafanart_download(data, movie_target_dir):
     extrafanart_path = os.path.join(movie_target_dir, config.getStrValue("extrafanart.extrafanart_folder_name"))
+    create_folder(extrafanart_path)
     if config.getIntValue("extrafanart.parallel_download") > 0:
         extrafanart_download_threadpool(data, extrafanart_path)
     else:
@@ -193,7 +199,7 @@ def extrafanart_download(data, movie_target_dir):
 def extrafanart_download_threadpool(url_list, extrafanart_path):    
     dn_list = []
     for i, url in enumerate(url_list, start=1):
-        jpg_fullpath = extrafanart_path / f'extrafanart-{i}{image_ext(url)}'
+        jpg_fullpath = os.path.join(extrafanart_path, f'extrafanart-{i}{image_ext(url)}') 
         if config.getBoolValue("common.download_only_missing_images") and not file_not_exist_or_empty(jpg_fullpath):
             continue
         dn_list.append((url, jpg_fullpath))
@@ -218,7 +224,7 @@ def download_one_file(args):
 
 
 
-def print_files(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, json_data):
+def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, json_data):
     # title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label = scraper.get_info(json_data)
     jellyfin = config.getBoolValue("common.jellyfin")
     nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
