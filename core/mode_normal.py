@@ -3,6 +3,7 @@ import typing
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import shutil
+from lxml import etree
 
 import logger
 import config
@@ -77,6 +78,9 @@ def main_mode_1(movie_path, json_data):
         cn_sub = True
     
     # 处理封面
+    fanart_path = ""
+    poster_path = ""
+    thumb_path = ""
     if "cover" in json_data and json_data["cover"] != '':
         cover_url = json_data["cover"]
         ext = image_ext(cover_url)
@@ -108,10 +112,25 @@ def main_mode_1(movie_path, json_data):
     # if conf.download_actor_photo_for_kodi():
     #     actor_photo_download(json_data.get('actor_photo'), path, number)
     
+    
+    movie_suffix = os.path.splitext(movie_path)[-1]
+    target_file_name = f"{number}{'-C' if cn_sub else ''}"
+    
     # TODO link mode
-    shutil.move(movie_path, os.path.join(movie_target_dir,f"{number}{'-C' if cn_sub else ''}{os.path.splitext(movie_path)[-1]}"))
+    shutil.move(movie_path, os.path.join(movie_target_dir, target_file_name + movie_suffix))
 
-
+    for sub_suffix in constant.G_SUB_SUFFIX:
+        l = len(movie_path)-len(movie_suffix)
+        sub_path = movie_path[:l]+sub_suffix
+        logger.debug(f"sub_path [{sub_path}]")
+        if os.path.isfile(sub_path):
+            shutil.move(sub_path, os.path.join(movie_target_dir, target_file_name + sub_suffix))
+    
+    try:
+        print_files(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path)
+    except Exception as e:
+        logger.error(f"print_files error. [{e}]")
+        
 
 
 def moveFailedFolder(movie_path):
@@ -160,8 +179,8 @@ def image_download(url:str, full_filepath:str) -> bool:
 
 
 # 剧照下载成功，否则移动到failed
-def extrafanart_download(data, movie_path):
-    extrafanart_path = os.path.join(movie_path, config.getStrValue("extrafanart.extrafanart_folder_name"))
+def extrafanart_download(data, movie_target_dir):
+    extrafanart_path = os.path.join(movie_target_dir, config.getStrValue("extrafanart.extrafanart_folder_name"))
     if config.getIntValue("extrafanart.parallel_download") > 0:
         extrafanart_download_threadpool(data, extrafanart_path)
     else:
@@ -196,3 +215,130 @@ def extrafanart_download_threadpool(url_list, extrafanart_path):
 def download_one_file(args):
     (url, save_path) = args
     return image_download(url, save_path)
+
+
+
+def print_files(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, json_data):
+    # title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label = scraper.get_info(json_data)
+    jellyfin = config.getBoolValue("common.jellyfin")
+    nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
+        
+    try:
+        old_nfo = None
+        try:
+            if os.path.isfile(nfo_path):
+                old_nfo = etree.parse(nfo_path)
+        except:
+            pass
+        # KODI内查看影片信息时找不到number，配置naming_rule=number+'#'+title虽可解决
+        # 但使得标题太长，放入时常为空的outline内会更适合，软件给outline留出的显示版面也较大
+        outline = json_data['outline']
+        if not outline:
+            pass
+        elif json_data['source'] == 'pissplay':
+            outline = f"{outline}"
+        else:
+            outline = f"{json_data['number']}#{outline}"
+
+        with open(nfo_path, "wt", encoding='UTF-8') as code:
+            print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
+            print("<movie>", file=code)
+            if not jellyfin:
+                print("  <title><![CDATA[" + json_data['naming_rule'] + "]]></title>", file=code)
+                print("  <originaltitle><![CDATA[" + json_data['original_naming_rule'] + "]]></originaltitle>",
+                      file=code)
+                print("  <sorttitle><![CDATA[" + json_data['naming_rule'] + "]]></sorttitle>", file=code)
+            else:
+                print("  <title>" + json_data['naming_rule'] + "</title>", file=code)
+                print("  <originaltitle>" + json_data['original_naming_rule'] + "</originaltitle>", file=code)
+                print("  <sorttitle>" + json_data['naming_rule'] + "</sorttitle>", file=code)
+            print("  <customrating>JP-18+</customrating>", file=code)
+            print("  <mpaa>JP-18+</mpaa>", file=code)
+            try:
+                print("  <set>" + json_data['series'] + "</set>", file=code)
+            except:
+                print("  <set></set>", file=code)
+            print("  <studio>" + json_data['studio'] + "</studio>", file=code)
+            print("  <year>" + json_data['year'] + "</year>", file=code)
+            if not jellyfin:
+                print("  <outline><![CDATA[" + outline + "]]></outline>", file=code)
+                print("  <plot><![CDATA[" + outline + "]]></plot>", file=code)
+            else:
+                print("  <outline>" + outline + "</outline>", file=code)
+                print("  <plot>" + outline + "</plot>", file=code)
+            print("  <runtime>" + str(json_data['runtime']).replace(" ", "") + "</runtime>", file=code)
+            print("  <director>" + json_data['director'] + "</director>", file=code)
+            print("  <poster>" + poster_path + "</poster>", file=code)
+            print("  <thumb>" + thumb_path + "</thumb>", file=code)
+            if not jellyfin:  # jellyfin 不需要保存fanart
+                print("  <fanart>" + fanart_path + "</fanart>", file=code)
+            try:
+                for key in json_data['actor_list']:
+                    print("  <actor>", file=code)
+                    print("    <name>" + key + "</name>", file=code)
+                    # try:
+                    #     print("    <thumb>" + actor_photo.get(str(key)) + "</thumb>", file=code)
+                    # except:
+                    #     pass
+                    print("  </actor>", file=code)
+            except:
+                pass
+            print("  <maker>" + json_data['studio'] + "</maker>", file=code)
+            print("  <label>" + json_data['label'] + "</label>", file=code)
+
+            
+            if not jellyfin:
+                for i in json_data['tag']:
+                    print("  <tag>" + i + "</tag>", file=code)
+            else:
+                for i in json_data['tag']:
+                    print("  <genre>" + i + "</genre>", file=code)
+
+            print("  <num>" + json_data['number'] + "</num>", file=code)
+            print("  <premiered>" + json_data['release'] + "</premiered>", file=code)
+            print("  <releasedate>" + json_data['release'] + "</releasedate>", file=code)
+            print("  <release>" + json_data['release'] + "</release>", file=code)
+            if old_nfo:
+                try:
+                    xur = old_nfo.xpath('//userrating/text()')[0]
+                    if isinstance(xur, str) and re.match('\d+\.\d+|\d+', xur.strip()):
+                        print(f"  <userrating>{xur.strip()}</userrating>", file=code)
+                except:
+                    pass
+            try:
+                f_rating = json_data.get('userrating')
+                uc = json_data.get('uservotes')
+                print(f"""  <rating>{round(f_rating * 2.0, 1)}</rating>
+  <criticrating>{round(f_rating * 20.0, 1)}</criticrating>
+  <ratings>
+    <rating name="javdb" max="5" default="true">
+      <value>{f_rating}</value>
+      <votes>{uc}</votes>
+    </rating>
+  </ratings>""", file=code)
+            except:
+                if old_nfo:
+                    try:
+                        for rtag in ('rating', 'criticrating'):
+                            xur = old_nfo.xpath(f'//{rtag}/text()')[0]
+                            if isinstance(xur, str) and re.match('\d+\.\d+|\d+', xur.strip()):
+                                print(f"  <{rtag}>{xur.strip()}</{rtag}>", file=code)
+                        f_rating = old_nfo.xpath(f"//ratings/rating[@name='javdb']/value/text()")[0]
+                        uc = old_nfo.xpath(f"//ratings/rating[@name='javdb']/votes/text()")[0]
+                        print(f"""  <ratings>
+    <rating name="javdb" max="5" default="true">
+      <value>{f_rating}</value>
+      <votes>{uc}</votes>
+    </rating>
+  </ratings>""", file=code)
+                    except:
+                        pass
+            print("  <cover>" + json_data['cover'] + "</cover>", file=code)
+            # if config.getInstance().is_trailer():
+            #     print("  <trailer>" + trailer + "</trailer>", file=code)
+            print("  <website>" + json_data['website'] + "</website>", file=code)
+            print("</movie>", file=code)
+            logger.info(f"nfo file wrote! [{nfo_path}]")    
+    except Exception as e:
+        logger.error(f"nfo file write error! [{nfo_path}] {e}")
+        return

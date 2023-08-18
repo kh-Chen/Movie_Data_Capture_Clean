@@ -119,3 +119,20 @@ def special_characters_replacement(text) -> str:
             replace('&amp;', '＆').
             replace("&", '＆')
             )
+
+def get_info(json_data):  # 返回json里的数据
+    title = json_data.get('title')
+    studio = json_data.get('studio')
+    year = json_data.get('year')
+    outline = json_data.get('outline')
+    runtime = json_data.get('runtime')
+    director = json_data.get('director')
+    actor_photo = json_data.get('actor_photo', {})
+    release = json_data.get('release')
+    number = json_data.get('number')
+    cover = json_data.get('cover')
+    trailer = json_data.get('trailer')
+    website = json_data.get('website')
+    series = json_data.get('series')
+    label = json_data.get('label', "")
+    return title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label
