@@ -107,14 +107,10 @@ class Scraper:
     
 
     def get_data_state(self, data: dict) -> bool:  # 元数据获取失败检测
-        if "title" not in data or "number" not in data:
+        if "title" not in data or "number" not in data :
             return False
         if data["title"] is None or data["title"] == "" or data["title"] == "null":
             return False
         if data["number"] is None or data["number"] == "" or data["number"] == "null":
-            return False
-        if (data["cover"] is None or data["cover"] == "" or data["cover"] == "null") \
-                and (data["cover_small"] is None or data["cover_small"] == "" or
-                     data["cover_small"] == "null"):
             return False
         return True

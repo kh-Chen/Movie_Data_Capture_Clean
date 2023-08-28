@@ -50,24 +50,24 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         moveFailedFolder(movie_path)
         return
     
-    json_data = scraper.get_base_data_by_number(number)
-    if json_data is None:
+    movie_info = scraper.get_base_data_by_number(number)
+    if movie_info is None:
         moveFailedFolder(movie_path)
         return
     
     main_mode = config.getIntValue("common.main_mode")
     if main_mode == 1:
-        main_mode_1(movie_path, json_data)
+        main_mode_1(movie_path, movie_info)
     elif main_mode == 2:
         pass
     elif main_mode == 3:
         pass
 
 
-def main_mode_1(movie_path, json_data):
-    number = json_data["number"]
+def main_mode_1(movie_path, movie_info):
+    number = movie_info["number"]
 
-    movie_target_dir = create_movie_folder_by_rule(json_data)
+    movie_target_dir = create_movie_folder_by_rule(movie_info)
     if movie_target_dir is None:
         moveFailedFolder(movie_path)
         return
@@ -81,8 +81,8 @@ def main_mode_1(movie_path, json_data):
     fanart_path = ""
     poster_path = ""
     thumb_path = ""
-    if "cover" in json_data and json_data["cover"] != '':
-        cover_url = json_data["cover"]
+    if "cover" in movie_info and movie_info["cover"] != '':
+        cover_url = movie_info["cover"]
         ext = image_ext(cover_url)
         fanart_path = f"fanart{ext}"
         poster_path = f"poster{ext}"
@@ -100,24 +100,24 @@ def main_mode_1(movie_path, json_data):
             # TODO cutImage(imagecut, path, thumb_path, poster_path, bool(conf.face_uncensored_only() and not uncensored))
 
      # 下载预告片
-        # if conf.is_trailer() and json_data.get('trailer'):
-        #     trailer_download(json_data.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
+        # if conf.is_trailer() and movie_info.get('trailer'):
+        #     trailer_download(movie_info.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
 
     # 下载剧照
-    if config.getBoolValue("extrafanart.switch") and "extrafanart" in json_data and len(json_data.get('extrafanart')) > 0:
-        extrafanart_download(json_data.get('extrafanart'), movie_target_dir)
+    if config.getBoolValue("extrafanart.switch") and "extrafanart" in movie_info and len(movie_info.get('extrafanart')) > 0:
+        extrafanart_download(movie_info.get('extrafanart'), movie_target_dir)
                 
 
     # 下载演员头像 KODI .actors 目录位置
     # if conf.download_actor_photo_for_kodi():
-    #     actor_photo_download(json_data.get('actor_photo'), path, number)
+    #     actor_photo_download(movie_info.get('actor_photo'), path, number)
     
     
     movie_suffix = os.path.splitext(movie_path)[-1]
     target_file_name = f"{number}{'-C' if cn_sub else ''}"
 
     try:
-        print_nfo_file(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path,json_data)
+        print_nfo_file(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path,movie_info)
     except Exception as e:
         logger.error(f"print_files error. [{e}]")
         moveFailedFolder(movie_path)
@@ -142,18 +142,18 @@ def moveFailedFolder(movie_path):
     pass
 
 
-def create_movie_folder_by_rule(json_data):
+def create_movie_folder_by_rule(movie_info):
     location_rule = config.getStrValue("Name_Rule.location_rule")
-    actor = json_data.get('actor')
+    actor = movie_info.get('actor')
     if 'actor' in location_rule and len(actor) > 100:
         location_rule = location_rule.replace("actor", "'多人作品'")
 
     maxlen = config.getStrValue("Name_Rule.max_title_len")
-    if 'title' in location_rule and len(json_data["title"]) > maxlen:
-        shorttitle = json_data["title"][0:maxlen]
+    if 'title' in location_rule and len(movie_info["title"]) > maxlen:
+        shorttitle = movie_info["title"][0:maxlen]
         location_rule = location_rule.replace("title", f"'{shorttitle}'")
 
-    str_location_rule = eval(location_rule, json_data)
+    str_location_rule = eval(location_rule, movie_info)
     # 当演员为空时，location_rule被计算为'/number'绝对路径，导致路径连接忽略第一个路径参数，因此添加./使其始终为相对路径
     success_folder = config.getStrValue("common.success_output_folder")
     path = os.path.join(success_folder, f'./{str_location_rule.strip()}')
@@ -224,8 +224,7 @@ def download_one_file(args):
 
 
 
-def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, json_data):
-    # title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label = scraper.get_info(json_data)
+def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, movie_info):
     jellyfin = config.getBoolValue("common.jellyfin")
     nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
         
@@ -238,48 +237,48 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
             pass
         # KODI内查看影片信息时找不到number，配置naming_rule=number+'#'+title虽可解决
         # 但使得标题太长，放入时常为空的outline内会更适合，软件给outline留出的显示版面也较大
-        outline = json_data['outline']
+        outline = movie_info['outline']
         if not outline:
             pass
-        elif json_data['source'] == 'pissplay':
+        elif movie_info['source'] == 'pissplay':
             outline = f"{outline}"
         else:
-            outline = f"{json_data['number']}#{outline}"
+            outline = f"{movie_info['number']}#{outline}"
 
         with open(nfo_path, "wt", encoding='UTF-8') as code:
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
             if not jellyfin:
-                print("  <title><![CDATA[" + json_data['naming_rule'] + "]]></title>", file=code)
-                print("  <originaltitle><![CDATA[" + json_data['original_naming_rule'] + "]]></originaltitle>",
+                print("  <title><![CDATA[" + movie_info['naming_rule'] + "]]></title>", file=code)
+                print("  <originaltitle><![CDATA[" + movie_info['original_naming_rule'] + "]]></originaltitle>",
                       file=code)
-                print("  <sorttitle><![CDATA[" + json_data['naming_rule'] + "]]></sorttitle>", file=code)
+                print("  <sorttitle><![CDATA[" + movie_info['naming_rule'] + "]]></sorttitle>", file=code)
             else:
-                print("  <title>" + json_data['naming_rule'] + "</title>", file=code)
-                print("  <originaltitle>" + json_data['original_naming_rule'] + "</originaltitle>", file=code)
-                print("  <sorttitle>" + json_data['naming_rule'] + "</sorttitle>", file=code)
+                print("  <title>" + movie_info['naming_rule'] + "</title>", file=code)
+                print("  <originaltitle>" + movie_info['original_naming_rule'] + "</originaltitle>", file=code)
+                print("  <sorttitle>" + movie_info['naming_rule'] + "</sorttitle>", file=code)
             print("  <customrating>JP-18+</customrating>", file=code)
             print("  <mpaa>JP-18+</mpaa>", file=code)
             try:
-                print("  <set>" + json_data['series'] + "</set>", file=code)
+                print("  <set>" + movie_info['series'] + "</set>", file=code)
             except:
                 print("  <set></set>", file=code)
-            print("  <studio>" + json_data['studio'] + "</studio>", file=code)
-            print("  <year>" + json_data['year'] + "</year>", file=code)
+            print("  <studio>" + movie_info['studio'] + "</studio>", file=code)
+            print("  <year>" + movie_info['year'] + "</year>", file=code)
             if not jellyfin:
                 print("  <outline><![CDATA[" + outline + "]]></outline>", file=code)
                 print("  <plot><![CDATA[" + outline + "]]></plot>", file=code)
             else:
                 print("  <outline>" + outline + "</outline>", file=code)
                 print("  <plot>" + outline + "</plot>", file=code)
-            print("  <runtime>" + str(json_data['runtime']).replace(" ", "") + "</runtime>", file=code)
-            print("  <director>" + json_data['director'] + "</director>", file=code)
+            print("  <runtime>" + str(movie_info['runtime']).replace(" ", "") + "</runtime>", file=code)
+            print("  <director>" + movie_info['director'] + "</director>", file=code)
             print("  <poster>" + poster_path + "</poster>", file=code)
             print("  <thumb>" + thumb_path + "</thumb>", file=code)
             if not jellyfin:  # jellyfin 不需要保存fanart
                 print("  <fanart>" + fanart_path + "</fanart>", file=code)
             try:
-                for key in json_data['actor_list']:
+                for key in movie_info['actor_list']:
                     print("  <actor>", file=code)
                     print("    <name>" + key + "</name>", file=code)
                     # try:
@@ -289,21 +288,21 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
                     print("  </actor>", file=code)
             except:
                 pass
-            print("  <maker>" + json_data['studio'] + "</maker>", file=code)
-            print("  <label>" + json_data['label'] + "</label>", file=code)
+            print("  <maker>" + movie_info['studio'] + "</maker>", file=code)
+            print("  <label>" + movie_info['label'] + "</label>", file=code)
 
             
             if not jellyfin:
-                for i in json_data['tag']:
+                for i in movie_info['tag']:
                     print("  <tag>" + i + "</tag>", file=code)
             else:
-                for i in json_data['tag']:
+                for i in movie_info['tag']:
                     print("  <genre>" + i + "</genre>", file=code)
 
-            print("  <num>" + json_data['number'] + "</num>", file=code)
-            print("  <premiered>" + json_data['release'] + "</premiered>", file=code)
-            print("  <releasedate>" + json_data['release'] + "</releasedate>", file=code)
-            print("  <release>" + json_data['release'] + "</release>", file=code)
+            print("  <num>" + movie_info['number'] + "</num>", file=code)
+            print("  <premiered>" + movie_info['release'] + "</premiered>", file=code)
+            print("  <releasedate>" + movie_info['release'] + "</releasedate>", file=code)
+            print("  <release>" + movie_info['release'] + "</release>", file=code)
             if old_nfo:
                 try:
                     xur = old_nfo.xpath('//userrating/text()')[0]
@@ -312,8 +311,8 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
                 except:
                     pass
             try:
-                f_rating = json_data.get('userrating')
-                uc = json_data.get('uservotes')
+                f_rating = movie_info.get('userrating')
+                uc = movie_info.get('uservotes')
                 print(f"""  <rating>{round(f_rating * 2.0, 1)}</rating>
   <criticrating>{round(f_rating * 20.0, 1)}</criticrating>
   <ratings>
@@ -339,10 +338,10 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
   </ratings>""", file=code)
                     except:
                         pass
-            print("  <cover>" + json_data['cover'] + "</cover>", file=code)
+            print("  <cover>" + movie_info['cover'] + "</cover>", file=code)
             # if config.getInstance().is_trailer():
             #     print("  <trailer>" + trailer + "</trailer>", file=code)
-            print("  <website>" + json_data['website'] + "</website>", file=code)
+            print("  <website>" + movie_info['website'] + "</website>", file=code)
             print("</movie>", file=code)
             logger.info(f"nfo file wrote! [{nfo_path}]")    
     except Exception as e:

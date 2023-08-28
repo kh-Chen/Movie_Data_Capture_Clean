@@ -1,6 +1,7 @@
 from .scrapinglib.base import Scraper
 import logger
 import config
+import translators as ts
 
 def get_base_data_by_number(number:str):
     logger.debug(f"get Data for number [{number}]...")
@@ -15,89 +16,66 @@ def get_base_data_by_number(number:str):
     if json_data.get('title') == '':
         logger.error('Movie Title not found!')
         return None
-    
-    title = json_data.get('title')
-    actor_list = str(json_data.get('actor')).strip("[ ]").replace("'", '').split(',')  # 字符串转列表
-    actor_list = [actor.strip() for actor in actor_list]  # 去除空白
-    director = json_data.get('director')
-    release = json_data.get('release')
-    number = json_data.get('number')
-    studio = json_data.get('studio')
-    source = json_data.get('source')
-    runtime = json_data.get('runtime')
-    outline = json_data.get('outline')
-    label = json_data.get('label')
-    series = json_data.get('series')
-    year = json_data.get('year')
 
-    cover_small = json_data.get('cover_small')  if 'cover_small' in json_data else ''
-    trailer = json_data.get('trailer')  if 'trailer' in json_data else ''
-    extrafanart = json_data.get('extrafanart')  if 'extrafanart' in json_data else ''
+    return cover_json_data(json_data)
 
-    imagecut = json_data.get('imagecut')
-    tag = str(json_data.get('tag')).strip("[ ]").replace("'", '').replace(" ", '').split(',')  # 字符串转列表 @
-    while 'XXXX' in tag:
-        tag.remove('XXXX')
-    while 'xxx' in tag:
-        tag.remove('xxx')
-    if json_data['source'] =='pissplay': # pissplay actor为英文名，不用去除空格
-        actor = str(actor_list).strip("[ ]").replace("'", '')
-    else:
-        actor = str(actor_list).strip("[ ]").replace("'", '').replace(" ", '')
 
-    # ====================处理异常字符====================== #\/:*?"<>|
-    actor = special_characters_replacement(actor)
+def cover_json_data(movie_info):
+    actor_list = ["佚名"]
+    if 'actor' in movie_info:
+        actor_list = movie_info['actor']
+        if not isinstance(actor_list, list):
+            actor_list = [ actor_list ]
+    actor_list = [actor.strip() for actor in actor_list]
     actor_list = [special_characters_replacement(a) for a in actor_list]
-    title = special_characters_replacement(title)
-    label = special_characters_replacement(label)
-    outline = special_characters_replacement(outline)
-    series = special_characters_replacement(series)
-    studio = special_characters_replacement(studio)
-    director = special_characters_replacement(director)
-    tag = [special_characters_replacement(t) for t in tag]
-    release = release.replace('/', '-')
-    tmpArr = cover_small.split(',')
-    if len(tmpArr) > 0:
-        cover_small = tmpArr[0].strip('\"').strip('\'')
-    # ====================处理异常字符 END================== #\/:*?"<>|
+    actor = str(movie_info['actor_list']).strip("[ ]").replace("'", '').replace(" ", '')
+    movie_info['actor_list'] = actor_list
+    movie_info['actor'] = special_characters_replacement(actor)
 
-    json_data['number'] = number.upper()
-    json_data['title'] = title
-    json_data['original_title'] = title
-    json_data['actor'] = actor
-    json_data['release'] = release
-    json_data['cover_small'] = cover_small
-    json_data['tag'] = tag
-    json_data['year'] = year
-    json_data['actor_list'] = actor_list
-    json_data['trailer'] = trailer
-    json_data['extrafanart'] = extrafanart
-    json_data['label'] = label
-    json_data['outline'] = outline
-    json_data['series'] = series
-    json_data['studio'] = studio
-    json_data['director'] = director
+    tag_list = []
+    if 'tag' in movie_info:
+        tag_list = movie_info['tag']
+        if not isinstance(tag_list, list):
+            actor_list = [ tag_list ]
+    while 'XXXX' in tag_list:
+        tag_list.remove('XXXX')
+    while 'xxx' in tag_list:
+        tag_list.remove('xxx')
+    movie_info['tag'] = [special_characters_replacement(t) for t in tag_list]
 
-    # TODO 翻译，简繁转换
+    movie_info["number"] = movie_info["number"].upper()
+    movie_info["director"] = special_characters_replacement(movie_info["director"]) if 'director' in movie_info else ''
+    movie_info["release"] = movie_info["release"].replace('/', '-') if 'release' in movie_info else ''
+    movie_info["studio"] = special_characters_replacement(movie_info["studio"]) if 'studio' in movie_info else ''
+    movie_info["title"] = special_characters_replacement(movie_info["title"]) if 'title' in movie_info else ''
+    movie_info["original_title"] = movie_info["title"]
+    movie_info["outline"] = special_characters_replacement(movie_info["outline"]) if 'outline' in movie_info else ''
+    movie_info["label"] = special_characters_replacement(movie_info["label"]) if 'label' in movie_info else ''
+    movie_info["series"] = special_characters_replacement(movie_info["series"]) if 'series' in movie_info else ''
+    movie_info['trailer'] = special_characters_replacement(movie_info["trailer"]) if 'trailer' in movie_info else ''
+    movie_info['extrafanart'] = special_characters_replacement(movie_info["extrafanart"]) if 'extrafanart' in movie_info else ''
 
+    if config.getBoolValue("translate.switch"):
+        movie_info["title"] = ts.translate_text(query_text=movie_info["title"], translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+        movie_info["outline"] = ts.translate_text(query_text=movie_info["outline"], translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+    
     naming_rule = ""
     original_naming_rule = ""
     for i in config.getStrValue("Name_Rule.naming_rule").split("+"):
-        if i not in json_data:
+        if i not in movie_info:
             naming_rule += i.strip("'").strip('"')
             original_naming_rule += i.strip("'").strip('"')
         else:
-            item = json_data.get(i)
+            item = movie_info[i]
             naming_rule += item if type(item) is not list else "&".join(item)
-            # PATCH：处理[title]存在翻译的情况，后续NFO文件的original_name只会直接沿用naming_rule,这导致original_name非原始名
-            # 理应在翻译处处理 naming_rule和original_naming_rule
             if i == 'title':
-                item = json_data.get('original_title')
+                item = movie_info.get('original_title')
             original_naming_rule += item if type(item) is not list else "&".join(item)
 
-    json_data['naming_rule'] = naming_rule
-    json_data['original_naming_rule'] = original_naming_rule
-    return json_data
+    movie_info['naming_rule'] = naming_rule
+    movie_info['original_naming_rule'] = original_naming_rule
+    return movie_info
+
 
 
 
@@ -120,19 +98,3 @@ def special_characters_replacement(text) -> str:
             replace("&", '＆')
             )
 
-def get_info(json_data):  # 返回json里的数据
-    title = json_data.get('title')
-    studio = json_data.get('studio')
-    year = json_data.get('year')
-    outline = json_data.get('outline')
-    runtime = json_data.get('runtime')
-    director = json_data.get('director')
-    actor_photo = json_data.get('actor_photo', {})
-    release = json_data.get('release')
-    number = json_data.get('number')
-    cover = json_data.get('cover')
-    trailer = json_data.get('trailer')
-    website = json_data.get('website')
-    series = json_data.get('series')
-    label = json_data.get('label', "")
-    return title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label

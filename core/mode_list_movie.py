@@ -29,7 +29,6 @@ def movie_lists() -> typing.List[str]:
 
     # main_mode = config.getIntValue("common.main_mode")
     nfo_skip_days = config.getIntValue("common.nfo_skip_days")
-    # link_mode = config.getIntValue("common.link_mode")
     escape_folder_set = set(re.split("[,，]", config.getStrValue("common.escape_folders")))
     
     total = []

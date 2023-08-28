@@ -54,22 +54,12 @@ class Parser:
 
 
     def search(self, number):
-        """ 查询番号
-
-        查询主要流程:
-        1. 获取 url
-        2. 获取详情页面
-        3. 解析
-        4. 返回 result
-        """
         self.number = number
-        
         self.detailurl = self.queryNumberUrl(number)
         if not self.detailurl:
             return 404
         htmltree = self.getHtmlTree(self.detailurl)
-        result = self.dictformat(htmltree)
-        return result
+        return self.dictformat(htmltree)
 
     def queryNumberUrl(self, number):
         """ 根据番号查询详细信息url
@@ -115,7 +105,7 @@ class Parser:
                 'actor': self.getActors(htmltree),
                 # 'actor_photo': self.getActorPhoto(htmltree),
                 'cover': self.getCover(htmltree),
-                'cover_small': self.getSmallCover(htmltree),
+                # 'cover_small': self.getSmallCover(htmltree),
                 'extrafanart': self.getExtrafanart(htmltree),
                 'trailer': self.getTrailer(htmltree),
                 'tag': self.getTags(htmltree),
@@ -194,8 +184,8 @@ class Parser:
     def getCover(self, htmltree):
         return self.getTreeElementbyExprs(htmltree, self.expr_cover, self.expr_cover2)
 
-    def getSmallCover(self, htmltree):
-        return self.getTreeElement(htmltree, self.expr_smallcover)
+    # def getSmallCover(self, htmltree):
+    #     return self.getTreeElement(htmltree, self.expr_smallcover)
 
     def getExtrafanart(self, htmltree) -> list:
         return self.getTreeAll(htmltree, self.expr_extrafanart)

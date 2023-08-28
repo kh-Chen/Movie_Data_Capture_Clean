@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import time
 import shutil
@@ -11,7 +10,7 @@ from core.scrapinglib.custom.javdb import Javdb
 import logger
 import config
 from config import constant
-
+import translators as ts
 
 
 def main(folder_path):
@@ -50,7 +49,10 @@ def create_data_and_move(file_path: str, folder_path: str):
 
     logger.info(f"[{n_number}] -> '{file_path}'")
     if n_number:
-        core_main(file_path, folder_path, n_number)
+        try:
+            core_main(file_path, folder_path, n_number)
+        except Exception as e:
+            logger.error(f"error. {e}")
         # cnumber = n_number+"-C"
         # if file_path.find(cnumber) == -1:
         #     suffix = os.path.splitext(file_path)[-1]
@@ -85,17 +87,31 @@ def core_main(file_path, folder_path, number):
     #     logger.info(f"skip...")
     #     return
     
-    json_data = get_data_from_json(number)
+    
     # print(json_data)
     
     # path = f'{folder_path}\\{actorstr}'
     # if not os.path.exists(path):
     #     os.makedirs(path)
 
-    
-    c = file_path.lower().find(number+"-c") != -1
-    c = True
     suffix = os.path.splitext(file_path)[-1]
+    c = file_path.lower().find(number.lower()+"-c") != -1
+    # print(file_path.lower().find(number+"-c"))
+    # if c :
+    #     return
+    # c = True
+    # findsub = False
+    # for sub_suffix in constant.G_SUB_SUFFIX:
+    #     if os.path.isfile(file_path.replace(suffix,sub_suffix)):
+    #         findsub = True
+    #         break
+    # if findsub:
+    #     c = False
+
+    json_data = get_data_from_json(number)
+    time.sleep(1)
+        
+
     json_data["sub"] = '-C' if c else ''
     json_data["title"] = json_data["title"].replace(json_data["actor"].replace(","," "),"").strip()
     
@@ -155,16 +171,26 @@ def get_data_state(data: dict) -> bool:  # 元数据获取失败检测
 
 name_template="{release} {number}{sub} [{userrating}/{uservotes}] {actor} {title}"
 if __name__ == '__main__':
-    config.init()
+    # config.init()
     # logger.enable_debug()
-
-    # main('/mnt/f/downloaded')
+    # _ = ts.preaccelerate_and_speedtest()
+    # translators = ('alibaba', 'apertium', 'argos', 'baidu', 'bing',
+    # 'caiyun', 'cloudTranslation', 'deepl', 'elia', 'google',
+    # 'iciba', 'iflytek', 'iflyrec', 'itranslate', 'judic',
+    # 'languageWire', 'lingvanex', 'niutrans', 'mglip', 'mirai',
+    # 'modernMt', 'myMemory', 'papago', 'qqFanyi', 'qqTranSmart',
+    # 'reverso', 'sogou', 'sysTran', 'tilde', 'translateCom',
+    # 'translateMe', 'utibet', 'volcEngine', 'yandex', 'yeekit',
+    # 'youdao')
+    print(ts.translate_text(query_text='', translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10))
+    
+    # main('/mnt/f/store')
     # main('/mnt/f/downloaded/0')
     # main('/mnt/f/downloaded/1')
     # main('/mnt/f/downloaded/岬ななみ')
     # main('/mnt/f/downloaded/明里つむぎ')
     # main('/mnt/f/downloaded/橋本ありな')
-    main('/mnt/f/downloaded/三上悠亞')
+    # main('/mnt/f/downloaded/三上悠亞')
     # main('/mnt/f/downloaded/桃乃木かな')
     # main('/mnt/f/downloaded/希島あいり')
     # main('/mnt/f/downloaded/希島あいり/1')
