@@ -128,11 +128,6 @@ def core_main(file_path, folder_path, number):
         logger.info(f"same name.")
     # shutil.move(filepath, f'{folder_path}\\{name}')
 
-def FileName(STR):
-    for i,j in ("/／","\\＼","?？","|︱","\"＂","*＊","<＜",">＞",":："):
-        STR=STR.replace(i,j)
-    return STR
-
 
 def get_data_from_json(file_number):  # 从JSON返回元数据
     number = file_number.upper()

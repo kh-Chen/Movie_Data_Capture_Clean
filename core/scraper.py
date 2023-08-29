@@ -29,7 +29,7 @@ def cover_json_data(movie_info):
             actor_list = [ actor_list ]
     actor_list = [actor.strip() for actor in actor_list]
     actor_list = [special_characters_replacement(a) for a in actor_list]
-    actor = str(movie_info['actor_list']).strip("[ ]").replace("'", '').replace(" ", '')
+    actor = str(actor_list).strip("[ ]").replace("'", '').replace(" ", '')
     movie_info['actor_list'] = actor_list
     movie_info['actor'] = special_characters_replacement(actor)
 

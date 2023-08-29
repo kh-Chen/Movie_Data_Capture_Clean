@@ -57,7 +57,8 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         return
     
     filename = os.path.basename(movie_path)
-    movie_info["cn_sub"] = re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filename, re.I) or '中文' in filename or '字幕' in filename
+    movie_info["cn_sub"] = "-C" if re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filename, re.I) \
+        or '中文' in filename or '字幕' in filename else ""
     
     main_mode = config.getIntValue("common.main_mode")
     if main_mode == 1:
@@ -77,7 +78,9 @@ def main_mode_1(movie_path, movie_info):
         return
     
     # 处理封面
-    fanart_path, poster_path, thumb_path = ''
+    fanart_path = ''
+    poster_path = ''
+    thumb_path = ''
     if config.getBoolValue("capture.get_cover_switch"):
         fanart_path, poster_path, thumb_path = handler_cover(movie_info, movie_target_dir)
     # 下载预告片
@@ -93,7 +96,9 @@ def main_mode_1(movie_path, movie_info):
     #     actor_photo_download(movie_info.get('actor_photo'), path, number)
     
     movie_suffix = os.path.splitext(movie_path)[-1]
-    target_file_name = f"{number}{'-C' if movie_info['cn_sub'] else ''}"
+    movie_file_name_template = config.getStrValue("template.movie_file_name_template")
+    logger.debug(f"movie_file_name_template: [{movie_file_name_template}]")
+    target_file_name = movie_file_name_template.format(**movie_info)
 
     # 生成nfo文件
     if config.getBoolValue("capture.write_nfo_switch"):
@@ -106,7 +111,9 @@ def main_mode_1(movie_path, movie_info):
             return
     
     # TODO link mode
-    shutil.move(movie_path, os.path.join(movie_target_dir, target_file_name + movie_suffix))
+    new_movie_path = legalization_of_file_path(os.path.join(movie_target_dir, target_file_name + movie_suffix))
+    logger.info(f"{movie_path} move to {new_movie_path}")
+    shutil.move(movie_path, new_movie_path)
 
     for sub_suffix in constant.G_SUB_SUFFIX:
         l = len(movie_path)-len(movie_suffix)
@@ -129,9 +136,9 @@ def handler_cover(movie_info, movie_target_dir):
         poster_path = f"poster{ext}"
         thumb_path = f"thumb{ext}"
         if config.getBoolValue("capture.cover_naming_with_number"):
-            fanart_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-fanart{ext}"
-            poster_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-poster{ext}"
-            thumb_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-thumb{ext}"
+            fanart_path = f"{number}{movie_info['cn_sub']}-fanart{ext}"
+            poster_path = f"{number}{movie_info['cn_sub']}-poster{ext}"
+            thumb_path = f"{number}{movie_info['cn_sub']}-thumb{ext}"
         
         full_filepath = os.path.join(movie_target_dir, thumb_path)
         succ = image_download(cover_url, full_filepath)
@@ -165,7 +172,7 @@ def moveFailedFolder(movie_path):
 
 def create_movie_folder_by_rule(movie_info):
     success_folder = config.getStrValue("common.success_output_folder")
-    location_template = config.getStrValue("Name_Rule.location_template")
+    location_template = config.getStrValue("template.location_template")
     relative_path = location_template.format(**movie_info)
     path = os.path.join(success_folder, f'./{relative_path.strip()}')
     path = legalization_of_file_path(path)
@@ -246,7 +253,7 @@ def print_nfo_file(nfo_path, fanart_path, poster_path, thumb_path, movie_info):
 
         nfo_title = ""
         original_nfo_title = ""
-        nfo_title_template = config.getStrValue("Name_Rule.nfo_title_template")
+        nfo_title_template = config.getStrValue("template.nfo_title_template")
         nfo_title = nfo_title_template.format(**movie_info)
         original_nfo_title = nfo_title_template.replace('{title}', '{original_title}').format(**movie_info)
 
