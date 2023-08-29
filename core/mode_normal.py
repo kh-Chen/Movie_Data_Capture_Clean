@@ -1,4 +1,5 @@
 import re,os,time
+from datetime import datetime
 import typing
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -11,7 +12,7 @@ from config import constant
 from . import mode_list_movie
 from . import scraper
 from utils.number_parser import get_number
-from utils.functions import create_folder,escape_path,image_ext,file_not_exist_or_empty
+from utils.functions import create_folder,image_ext,file_not_exist_or_empty,legalization_of_file_path
 from utils.httprequest import download
 
 
@@ -55,6 +56,9 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         moveFailedFolder(movie_path)
         return
     
+    filename = os.path.basename(movie_path)
+    movie_info["cn_sub"] = re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filename, re.I) or '中文' in filename or '字幕' in filename
+    
     main_mode = config.getIntValue("common.main_mode")
     if main_mode == 1:
         main_mode_1(movie_path, movie_info)
@@ -72,56 +76,34 @@ def main_mode_1(movie_path, movie_info):
         moveFailedFolder(movie_path)
         return
     
-    cn_sub = False
-    if re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', movie_path,
-                 re.I) or '中文' in movie_path or '字幕' in movie_path:
-        cn_sub = True
-    
     # 处理封面
-    fanart_path = ""
-    poster_path = ""
-    thumb_path = ""
-    if "cover" in movie_info and movie_info["cover"] != '':
-        cover_url = movie_info["cover"]
-        ext = image_ext(cover_url)
-        fanart_path = f"fanart{ext}"
-        poster_path = f"poster{ext}"
-        thumb_path = f"thumb{ext}"
-        if config.getBoolValue("Name_Rule.image_naming_with_number"):
-            fanart_path = f"{number}{'-C' if cn_sub else ''}-fanart{ext}"
-            poster_path = f"{number}{'-C' if cn_sub else ''}-poster{ext}"
-            thumb_path = f"{number}{'-C' if cn_sub else ''}-thumb{ext}"
-        
-        full_filepath = os.path.join(movie_target_dir, thumb_path)
-        succ = image_download(cover_url, full_filepath)
-        shutil.copyfile(full_filepath, os.path.join(movie_target_dir, poster_path))
-        if succ and not config.getBoolValue("common.jellyfin"):
-            shutil.copyfile(full_filepath, os.path.join(movie_target_dir, fanart_path))
-            # TODO cutImage(imagecut, path, thumb_path, poster_path, bool(conf.face_uncensored_only() and not uncensored))
-
-     # 下载预告片
-        # if conf.is_trailer() and movie_info.get('trailer'):
-        #     trailer_download(movie_info.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
+    fanart_path, poster_path, thumb_path = ''
+    if config.getBoolValue("capture.get_cover_switch"):
+        fanart_path, poster_path, thumb_path = handler_cover(movie_info, movie_target_dir)
+    # 下载预告片
+    # if conf.is_trailer() and movie_info.get('trailer'):
+    #     trailer_download(movie_info.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
 
     # 下载剧照
-    if config.getBoolValue("extrafanart.switch") and "extrafanart" in movie_info and len(movie_info.get('extrafanart')) > 0:
+    if config.getBoolValue("capture.get_extrafanart_switch") and "extrafanart" in movie_info and len(movie_info.get('extrafanart')) > 0:
         extrafanart_download(movie_info.get('extrafanart'), movie_target_dir)
-                
 
     # 下载演员头像 KODI .actors 目录位置
     # if conf.download_actor_photo_for_kodi():
     #     actor_photo_download(movie_info.get('actor_photo'), path, number)
     
-    
     movie_suffix = os.path.splitext(movie_path)[-1]
-    target_file_name = f"{number}{'-C' if cn_sub else ''}"
+    target_file_name = f"{number}{'-C' if movie_info['cn_sub'] else ''}"
 
-    try:
-        print_nfo_file(movie_target_dir,target_file_name,fanart_path,poster_path,thumb_path,movie_info)
-    except Exception as e:
-        logger.error(f"print_files error. [{e}]")
-        moveFailedFolder(movie_path)
-        return
+    # 生成nfo文件
+    if config.getBoolValue("capture.write_nfo_switch"):
+        nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
+        try:
+            print_nfo_file(nfo_path,fanart_path,poster_path,thumb_path,movie_info)
+        except Exception as e:
+            logger.error(f"print_files error. [{e}]")
+            moveFailedFolder(movie_path)
+            return
     
     # TODO link mode
     shutil.move(movie_path, os.path.join(movie_target_dir, target_file_name + movie_suffix))
@@ -133,31 +115,60 @@ def main_mode_1(movie_path, movie_info):
             target_sub_path = os.path.join(movie_target_dir, target_file_name + sub_suffix)
             logger.info(f"find sub file at [{sub_path}], move to [{target_sub_path}]")
             shutil.move(sub_path, target_sub_path)
+
+
+def handler_cover(movie_info, movie_target_dir):
+    number = movie_info["number"]
+    fanart_path = ""
+    poster_path = ""
+    thumb_path = ""
+    if "cover" in movie_info and movie_info["cover"] != '':
+        cover_url = movie_info["cover"]
+        ext = image_ext(cover_url)
+        fanart_path = f"fanart{ext}"
+        poster_path = f"poster{ext}"
+        thumb_path = f"thumb{ext}"
+        if config.getBoolValue("capture.cover_naming_with_number"):
+            fanart_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-fanart{ext}"
+            poster_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-poster{ext}"
+            thumb_path = f"{number}{'-C' if movie_info['cn_sub'] else ''}-thumb{ext}"
+        
+        full_filepath = os.path.join(movie_target_dir, thumb_path)
+        succ = image_download(cover_url, full_filepath)
+        shutil.copyfile(full_filepath, os.path.join(movie_target_dir, poster_path))
+        if succ and not config.getBoolValue("common.jellyfin"):
+            shutil.copyfile(full_filepath, os.path.join(movie_target_dir, fanart_path))
+            # TODO cutImage(imagecut, path, thumb_path, poster_path, bool(conf.face_uncensored_only() and not uncensored))
     
-    
+    return fanart_path, poster_path, thumb_path
+
 
 
 
 def moveFailedFolder(movie_path):
-    pass
+    failed_folder = config.getStrValue("common.failed_output_folder")
+    new_movie_path = os.path.join(failed_folder, os.path.basename(movie_path))
+    mtxt = os.path.abspath(os.path.join(failed_folder, 'where_was_i_before_being_moved.txt'))
+    logger.info(f"Move to Failed output folder, see {mtxt}")
+
+    with open(mtxt, 'a', encoding='utf-8') as wwibbmt:
+        tmstr = datetime.now().strftime("%Y-%m-%d %H:%M")
+        wwibbmt.write(f'{tmstr} FROM[{movie_path}] TO [{new_movie_path}]\n')
+    try:
+        if os.path.exists(new_movie_path):
+            logger.error(f"File Exists while moving to FailedFolder: [{new_movie_path}]")
+            return
+        shutil.move(movie_path, new_movie_path)
+    except Exception as e:
+        logger.error(f"File Moving to FailedFolder unsuccessful! file: [{movie_path}], msg:[{e}]")
 
 
 def create_movie_folder_by_rule(movie_info):
-    location_rule = config.getStrValue("Name_Rule.location_rule")
-    actor = movie_info.get('actor')
-    if 'actor' in location_rule and len(actor) > 100:
-        location_rule = location_rule.replace("actor", "'多人作品'")
-
-    maxlen = config.getStrValue("Name_Rule.max_title_len")
-    if 'title' in location_rule and len(movie_info["title"]) > maxlen:
-        shorttitle = movie_info["title"][0:maxlen]
-        location_rule = location_rule.replace("title", f"'{shorttitle}'")
-
-    str_location_rule = eval(location_rule, movie_info)
-    # 当演员为空时，location_rule被计算为'/number'绝对路径，导致路径连接忽略第一个路径参数，因此添加./使其始终为相对路径
     success_folder = config.getStrValue("common.success_output_folder")
-    path = os.path.join(success_folder, f'./{str_location_rule.strip()}')
-    path = escape_path(path, config.getStrValue("Name_Rule.literals"))
+    location_template = config.getStrValue("Name_Rule.location_template")
+    relative_path = location_template.format(**movie_info)
+    path = os.path.join(success_folder, f'./{relative_path.strip()}')
+    path = legalization_of_file_path(path)
     
     try:
         create_folder(path)
@@ -183,11 +194,10 @@ def image_download(url:str, full_filepath:str) -> bool:
         return False
 
 
-# 剧照下载成功，否则移动到failed
 def extrafanart_download(data, movie_target_dir):
-    extrafanart_path = os.path.join(movie_target_dir, config.getStrValue("extrafanart.extrafanart_folder_name"))
+    extrafanart_path = os.path.join(movie_target_dir, config.getStrValue("capture.extrafanart_folder_name"))
     create_folder(extrafanart_path)
-    if config.getIntValue("extrafanart.parallel_download") > 0:
+    if config.getIntValue("capture.extrafanart_parallel_download") > 0:
         extrafanart_download_threadpool(data, extrafanart_path)
     else:
         create_folder(extrafanart_path)
@@ -207,7 +217,7 @@ def extrafanart_download_threadpool(url_list, extrafanart_path):
     if not len(dn_list):
         return
     
-    parallel = min(len(dn_list), config.getIntValue("extrafanart.parallel_download"))
+    parallel = min(len(dn_list), config.getIntValue("capture.extrafanart_parallel_download"))
 
     with ThreadPoolExecutor(parallel) as pool:
         results = list(pool.map(download_one_file, dn_list))
@@ -224,10 +234,8 @@ def download_one_file(args):
 
 
 
-def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path, thumb_path, movie_info):
+def print_nfo_file(nfo_path, fanart_path, poster_path, thumb_path, movie_info):
     jellyfin = config.getBoolValue("common.jellyfin")
-    nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
-        
     try:
         old_nfo = None
         try:
@@ -235,28 +243,25 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
                 old_nfo = etree.parse(nfo_path)
         except:
             pass
-        # KODI内查看影片信息时找不到number，配置naming_rule=number+'#'+title虽可解决
-        # 但使得标题太长，放入时常为空的outline内会更适合，软件给outline留出的显示版面也较大
-        outline = movie_info['outline']
-        if not outline:
-            pass
-        elif movie_info['source'] == 'pissplay':
-            outline = f"{outline}"
-        else:
-            outline = f"{movie_info['number']}#{outline}"
+
+        nfo_title = ""
+        original_nfo_title = ""
+        nfo_title_template = config.getStrValue("Name_Rule.nfo_title_template")
+        nfo_title = nfo_title_template.format(**movie_info)
+        original_nfo_title = nfo_title_template.replace('{title}', '{original_title}').format(**movie_info)
 
         with open(nfo_path, "wt", encoding='UTF-8') as code:
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
             if not jellyfin:
-                print("  <title><![CDATA[" + movie_info['naming_rule'] + "]]></title>", file=code)
-                print("  <originaltitle><![CDATA[" + movie_info['original_naming_rule'] + "]]></originaltitle>",
+                print("  <title><![CDATA[" + nfo_title + "]]></title>", file=code)
+                print("  <originaltitle><![CDATA[" + original_nfo_title + "]]></originaltitle>",
                       file=code)
-                print("  <sorttitle><![CDATA[" + movie_info['naming_rule'] + "]]></sorttitle>", file=code)
+                print("  <sorttitle><![CDATA[" + nfo_title + "]]></sorttitle>", file=code)
             else:
-                print("  <title>" + movie_info['naming_rule'] + "</title>", file=code)
-                print("  <originaltitle>" + movie_info['original_naming_rule'] + "</originaltitle>", file=code)
-                print("  <sorttitle>" + movie_info['naming_rule'] + "</sorttitle>", file=code)
+                print("  <title>" + nfo_title + "</title>", file=code)
+                print("  <originaltitle>" + original_nfo_title + "</originaltitle>", file=code)
+                print("  <sorttitle>" + nfo_title + "</sorttitle>", file=code)
             print("  <customrating>JP-18+</customrating>", file=code)
             print("  <mpaa>JP-18+</mpaa>", file=code)
             try:
@@ -266,11 +271,11 @@ def print_nfo_file(movie_target_dir, target_file_name, fanart_path, poster_path,
             print("  <studio>" + movie_info['studio'] + "</studio>", file=code)
             print("  <year>" + movie_info['year'] + "</year>", file=code)
             if not jellyfin:
-                print("  <outline><![CDATA[" + outline + "]]></outline>", file=code)
-                print("  <plot><![CDATA[" + outline + "]]></plot>", file=code)
+                print("  <outline><![CDATA[" + movie_info['outline'] + "]]></outline>", file=code)
+                print("  <plot><![CDATA[" + movie_info['outline'] + "]]></plot>", file=code)
             else:
-                print("  <outline>" + outline + "</outline>", file=code)
-                print("  <plot>" + outline + "</plot>", file=code)
+                print("  <outline>" + movie_info['outline'] + "</outline>", file=code)
+                print("  <plot>" + movie_info['outline'] + "</plot>", file=code)
             print("  <runtime>" + str(movie_info['runtime']).replace(" ", "") + "</runtime>", file=code)
             print("  <director>" + movie_info['director'] + "</director>", file=code)
             print("  <poster>" + poster_path + "</poster>", file=code)

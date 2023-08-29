@@ -1,6 +1,7 @@
 from .scrapinglib.base import Scraper
 import logger
 import config
+from utils.functions import special_characters_replacement
 import translators as ts
 
 def get_base_data_by_number(number:str):
@@ -55,46 +56,21 @@ def cover_json_data(movie_info):
     movie_info['trailer'] = special_characters_replacement(movie_info["trailer"]) if 'trailer' in movie_info else ''
     movie_info['extrafanart'] = special_characters_replacement(movie_info["extrafanart"]) if 'extrafanart' in movie_info else ''
 
+    title = movie_info["title"]
+    outline = movie_info["outline"]
     if config.getBoolValue("translate.switch"):
-        movie_info["title"] = ts.translate_text(query_text=movie_info["title"], translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
-        movie_info["outline"] = ts.translate_text(query_text=movie_info["outline"], translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+        title = ts.translate_text(query_text=title, translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+        if outline.strip() != '':
+            outline = ts.translate_text(query_text=outline, translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
     
-    naming_rule = ""
-    original_naming_rule = ""
-    for i in config.getStrValue("Name_Rule.naming_rule").split("+"):
-        if i not in movie_info:
-            naming_rule += i.strip("'").strip('"')
-            original_naming_rule += i.strip("'").strip('"')
-        else:
-            item = movie_info[i]
-            naming_rule += item if type(item) is not list else "&".join(item)
-            if i == 'title':
-                item = movie_info.get('original_title')
-            original_naming_rule += item if type(item) is not list else "&".join(item)
+    outline = f"{movie_info['number']} # {outline if outline.strip() != '' else title}"
 
-    movie_info['naming_rule'] = naming_rule
-    movie_info['original_naming_rule'] = original_naming_rule
+    movie_info["title"] = title
+    movie_info["outline"] = outline
+
     return movie_info
 
 
 
 
-def special_characters_replacement(text) -> str:
-    if not isinstance(text, str):
-        return text
-    return (text.replace('\\', '∖').  # U+2216 SET MINUS @ Basic Multilingual Plane
-            replace('/', '∕').  # U+2215 DIVISION SLASH @ Basic Multilingual Plane
-            replace(':', '꞉').  # U+A789 MODIFIER LETTER COLON @ Latin Extended-D
-            replace('*', '∗').  # U+2217 ASTERISK OPERATOR @ Basic Multilingual Plane
-            replace('?', '？').  # U+FF1F FULLWIDTH QUESTION MARK @ Basic Multilingual Plane
-            replace('"', '＂').  # U+FF02 FULLWIDTH QUOTATION MARK @ Basic Multilingual Plane
-            replace('<', 'ᐸ').  # U+1438 CANADIAN SYLLABICS PA @ Basic Multilingual Plane
-            replace('>', 'ᐳ').  # U+1433 CANADIAN SYLLABICS PO @ Basic Multilingual Plane
-            replace('|', 'ǀ').  # U+01C0 LATIN LETTER DENTAL CLICK @ Basic Multilingual Plane
-            replace('&lsquo;', '‘').  # U+02018 LEFT SINGLE QUOTATION MARK
-            replace('&rsquo;', '’').  # U+02019 RIGHT SINGLE QUOTATION MARK
-            replace('&hellip;', '…').
-            replace('&amp;', '＆').
-            replace("&", '＆')
-            )
 

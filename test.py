@@ -10,7 +10,9 @@ from core.scrapinglib.custom.javdb import Javdb
 import logger
 import config
 from config import constant
+from utils.functions import legalization_of_file_path
 import translators as ts
+
 
 
 def main(folder_path):
@@ -116,16 +118,8 @@ def core_main(file_path, folder_path, number):
     json_data["title"] = json_data["title"].replace(json_data["actor"].replace(","," "),"").strip()
     
     name = name_template.format(**json_data)
-    name = FileName(name)
-    max = 255-len(suffix)
-    len_name = 0
-    for index, every_char in enumerate(name):
-        len_name += len(every_char.encode())
-        if max < len_name:
-            name = name[:index]
-            break
-
     target = os.path.join(folder_path, f'{name}{suffix}')
+    target = legalization_of_file_path(target)
     
     if os.path.basename(file_path) != os.path.basename(target):
         logger.info(f"rename to {target}")

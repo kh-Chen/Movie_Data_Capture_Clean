@@ -34,11 +34,11 @@ class noThread(object):
 
 # 获取剧情介绍 从列表中的站点同时查，取值优先级从前到后
 def getStoryline(number, uncensored=None):
-    storyline_switch = config.getBoolValue("storyline.switch")
+    storyline_switch = config.getBoolValue("capture.get_storyline_switch")
     if not storyline_switch:
         return ""
 
-    storyline_sites = config.getStrValue("storyline.site").split(",")
+    storyline_sites = config.getStrValue("capture.storyline_data_source").split(",")
     start_time = time.time()
     sort_sites = []
     for s in storyline_sites:
@@ -46,7 +46,7 @@ def getStoryline(number, uncensored=None):
             sort_sites.append(s)
 
     mp_args = ((site, number) for site in sort_sites)   
-    run_mode = config.getIntValue("storyline.run_mode")
+    run_mode = config.getIntValue("capture.storyline_run_mode")
     with ThreadPool(len(sort_sites)) if run_mode > 0 else noThread() as pool:
         results = pool.map(getStoryline_mp, mp_args)
     
