@@ -41,28 +41,33 @@ class Javdb(Parser):
     expr_uservotes = '//span[@class="score-stars"]/../text()'
     expr_actorphoto = '//strong[contains(text(),"演員:")]/../span/a[starts-with(@href,"/actors/")]'
 
-    def __init__(self):
+    def __init__(self, _session = None):
         super(Javdb, self).__init__()
         self.fixstudio = False
         self.noauth = False
         self.cookies =  {'over18':'1', 'theme':'auto', 'locale':'zh'}
         self.dbsite = 'https://javdb521.com/'
+        self.number = ''
+        self.session = _session if _session is not None else request_session(cookies=self.cookies)
         
 
     def search(self, number: str):
         self.number = number
-        self.session = request_session(cookies=self.cookies)
         self.detailurl = self.queryNumberUrl(number)
-            
-        self.deatilpage = self.session.get(self.detailurl).text
-        if '此內容需要登入才能查看或操作' in self.deatilpage or '需要VIP權限才能訪問此內容' in self.deatilpage:
+        return self.get_from_detail_url(self.detailurl)
+    
+    def get_from_detail_url(self, detailurl:str):
+        if detailurl is not None:
+            self.detailurl = detailurl
+
+        deatilpage = self.session.get(self.detailurl).text
+        if '此內容需要登入才能查看或操作' in deatilpage or '需要VIP權限才能訪問此內容' in deatilpage:
             self.noauth = True
             self.imagecut = 0
-            result = self.dictformat(self.querytree)
+            return self.dictformat(self.querytree)
         else:
-            htmltree = etree.fromstring(self.deatilpage, etree.HTMLParser())
-            result = self.dictformat(htmltree)
-        return result
+            htmltree = etree.fromstring(deatilpage, etree.HTMLParser())
+            return self.dictformat(htmltree)
 
     def queryNumberUrl(self, number):
         javdb_url = self.dbsite + 'search?q=' + number + '&f=all'
@@ -70,7 +75,7 @@ class Javdb(Parser):
             resp = self.session.get(javdb_url)
         except Exception as e:
             #print(e)
-            raise Exception(f'[!] {self.number}: page not fond in javdb')
+            raise Exception(f'[!] {number}: page not fond in javdb')
 
         self.querytree = etree.fromstring(resp.text, etree.HTMLParser()) 
         # javdb sometime returns multiple results,
@@ -100,7 +105,7 @@ class Javdb(Parser):
         part2 = self.getTreeElement(htmltree, self.expr_number2)
         dp_number = part2 + part1
         # NOTE 检测匹配与更新 self.number
-        if dp_number.upper() != self.number.upper():
+        if self.number != '' and dp_number.upper() != self.number.upper():
             raise Exception(f'[!] {self.number}: find [{dp_number}] in javdb, not match')
         self.number = dp_number
         return self.number

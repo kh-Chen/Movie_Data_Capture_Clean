@@ -25,6 +25,15 @@ def start():
     
     # TODO 指定文件刮削 ---------------------------------
 
+    # 爬取指定url   -------------------------------------
+    scraping_url = config.getStrValAtArgs("scraping_url")
+    if scraping_url != '':
+        logger.info(f"Find --spider-url in the parameter list. value is [{scraping_url}]. run in scraping mode!")
+        from . import mode_url_scraper
+        mode_url_scraper.run(scraping_url)
+        return
+    
+
     # 检查配置文件参数合法性    --------------------------
     main_mode = config.getIntValue("common.main_mode")
     logger.debug(f"common.main_mode [{main_mode}]")

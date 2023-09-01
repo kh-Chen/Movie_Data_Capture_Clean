@@ -8,4 +8,5 @@ def parse():
     parser.add_argument("-c","--conf", dest='conf_file_path', default='', nargs='?', help="config file path")
     parser.add_argument("-s", "--search", dest='search_for_number', default='', nargs='?', help="Search number")
     parser.add_argument("-l", "--list-movie", dest='list_movie', action='store_true', help="print all movie path which will capture.")
+    parser.add_argument("-u", "--scraping-url", dest='scraping_url', default='', nargs='?', help="get all movie info from url, write to excel. only support javdb!")
     variables.args = vars(parser.parse_args())
