@@ -37,7 +37,10 @@ def run():
         if processed >= count_all:
             logger.info("Stop counter triggered!")
             break
-        time.sleep(1)
+        interval = config.getIntValue("common.interval")
+        if interval != 0:
+            logger.info(f"Continue in {interval} seconds")
+            time.sleep(interval)
 
 
 def do_capture_with_single_file(movie_path: str, spec_number:str=None):
@@ -51,7 +54,13 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         moveFailedFolder(movie_path)
         return
     
-    movie_info = scraper.get_base_data_by_number(number)
+    try:
+        movie_info = scraper.get_base_data_by_number(number)
+        logger.info("base data OK")
+    except Exception as e:
+        logger.error(f"get_base_data_by_number. number:[{number}] info: {e}" )
+        movie_info = None
+
     if movie_info is None:
         moveFailedFolder(movie_path)
         return
@@ -83,6 +92,7 @@ def main_mode_1(movie_path, movie_info):
     thumb_path = ''
     if config.getBoolValue("capture.get_cover_switch"):
         fanart_path, poster_path, thumb_path = handler_cover(movie_info, movie_target_dir)
+        logger.info("cover data OK")
     # 下载预告片
     # if conf.is_trailer() and movie_info.get('trailer'):
     #     trailer_download(movie_info.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
@@ -90,6 +100,7 @@ def main_mode_1(movie_path, movie_info):
     # 下载剧照
     if config.getBoolValue("capture.get_extrafanart_switch") and "extrafanart" in movie_info and len(movie_info.get('extrafanart')) > 0:
         extrafanart_download(movie_info.get('extrafanart'), movie_target_dir)
+        logger.info("extrafanart data OK")
 
     # 下载演员头像 KODI .actors 目录位置
     # if conf.download_actor_photo_for_kodi():
@@ -102,9 +113,10 @@ def main_mode_1(movie_path, movie_info):
 
     # 生成nfo文件
     if config.getBoolValue("capture.write_nfo_switch"):
-        nfo_path = os.path.join(movie_target_dir, f"{target_file_name}.nfo")
+        nfo_path = legalization_of_file_path(os.path.join(movie_target_dir, f"{target_file_name}.nfo"))
         try:
             print_nfo_file(nfo_path,fanart_path,poster_path,thumb_path,movie_info)
+            logger.info("write nfo OK")
         except Exception as e:
             logger.error(f"print_files error. [{e}]")
             moveFailedFolder(movie_path)
@@ -114,6 +126,7 @@ def main_mode_1(movie_path, movie_info):
     new_movie_path = legalization_of_file_path(os.path.join(movie_target_dir, target_file_name + movie_suffix))
     logger.info(f"{movie_path} move to {new_movie_path}")
     shutil.move(movie_path, new_movie_path)
+    logger.info("move OK")
 
     for sub_suffix in constant.G_SUB_SUFFIX:
         l = len(movie_path)-len(movie_suffix)
@@ -143,7 +156,7 @@ def handler_cover(movie_info, movie_target_dir):
         full_filepath = os.path.join(movie_target_dir, thumb_path)
         succ = image_download(cover_url, full_filepath)
         shutil.copyfile(full_filepath, os.path.join(movie_target_dir, poster_path))
-        if succ and not config.getBoolValue("common.jellyfin"):
+        if succ and not config.getBoolValue("capture.jellyfin"):
             shutil.copyfile(full_filepath, os.path.join(movie_target_dir, fanart_path))
             # TODO cutImage(imagecut, path, thumb_path, poster_path, bool(conf.face_uncensored_only() and not uncensored))
     
@@ -187,7 +200,7 @@ def create_movie_folder_by_rule(movie_info):
 
 
 def image_download(url:str, full_filepath:str) -> bool:
-    if config.getBoolValue("common.download_only_missing_images") and not file_not_exist_or_empty(full_filepath):
+    if config.getBoolValue("capture.download_only_missing_images") and not file_not_exist_or_empty(full_filepath):
         logger.info(f"image [{full_filepath}] already exists. skip download.")
         return True
     
@@ -217,7 +230,7 @@ def extrafanart_download_threadpool(url_list, extrafanart_path):
     dn_list = []
     for i, url in enumerate(url_list, start=1):
         jpg_fullpath = os.path.join(extrafanart_path, f'extrafanart-{i}{image_ext(url)}') 
-        if config.getBoolValue("common.download_only_missing_images") and not file_not_exist_or_empty(jpg_fullpath):
+        if config.getBoolValue("capture.download_only_missing_images") and not file_not_exist_or_empty(jpg_fullpath):
             continue
         dn_list.append((url, jpg_fullpath))
 
@@ -242,7 +255,7 @@ def download_one_file(args):
 
 
 def print_nfo_file(nfo_path, fanart_path, poster_path, thumb_path, movie_info):
-    jellyfin = config.getBoolValue("common.jellyfin")
+    jellyfin = config.getBoolValue("capture.jellyfin")
     try:
         old_nfo = None
         try:

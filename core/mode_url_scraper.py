@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 import json
 
 import logger
+import config
 from .scraper import cover_json_data
 from utils import httprequest
 
@@ -44,7 +45,10 @@ def javdb(url:str, session) :
         for index, key in enumerate(columns):
             sheet.write(row, index, data[key])
         logger.info(f"{data['number']} loaded.")
-        time.sleep(1)
+        interval = config.getIntValue("common.interval")
+        if interval != 0:
+            logger.info(f"Continue in {interval} seconds")
+            time.sleep(interval)
         
     xlsx.close()
 

@@ -12,6 +12,7 @@ import config
 from config import constant
 from utils.functions import legalization_of_file_path
 import translators as ts
+from multiprocessing.dummy import Pool as ThreadPool
 
 
 
@@ -157,22 +158,51 @@ def get_data_state(data: dict) -> bool:  # 元数据获取失败检测
 
     return True
 
+def ttt(args):
+    (translator, text) = args
+    start_time = time.time()
+    try:
+        _from = 'auto'
+        _to = 'zh-CHS'
+        if translator == 'alibaba':
+            _from = 'ja'
+        elif translator == 'cloudTranslation':
+            _to = 'zh-cn'
+        elif translator == 'iflyrec':
+            _from = 'ja'
+        new_text = ts.translate_text(query_text=text, translator=translator, from_language=_from, to_language=_to, timeout=10)
+        print(f"{new_text} ---- {translator} used time {time.time() - start_time:.3f}s")
+    except Exception as e:
+        # pass
+        print(f"{translator} error. {e}")
+
+
 
 name_template="{release} {number}{sub} [{userrating}/{uservotes}] {actor} {title}"
 if __name__ == '__main__':
     # config.init()
     # logger.enable_debug()
     # _ = ts.preaccelerate_and_speedtest()
-    # translators = ('alibaba', 'apertium', 'argos', 'baidu', 'bing',
-    # 'caiyun', 'cloudTranslation', 'deepl', 'elia', 'google',
-    # 'iciba', 'iflytek', 'iflyrec', 'itranslate', 'judic',
-    # 'languageWire', 'lingvanex', 'niutrans', 'mglip', 'mirai',
-    # 'modernMt', 'myMemory', 'papago', 'qqFanyi', 'qqTranSmart',
-    # 'reverso', 'sogou', 'sysTran', 'tilde', 'translateCom',
-    # 'translateMe', 'utibet', 'volcEngine', 'yandex', 'yeekit',
-    # 'youdao')
-    print(ts.translate_text(query_text='', translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10))
+    translators = [
+    # 'alibaba', #1
+    # 'baidu', #
+    # 'caiyun', #1
+    # 'cloudTranslation', #
+    # 'iciba', #
+    'iflyrec',#3
+    # 'sogou', #1
+    # 'translateCom',#
+    ]
+
+    # text = "憧れの隣人の美脚お姉さんを覗き見して5日目、とうとうバレてしまうが…誘惑されてめちゃくちゃSEXした"
+    # text = "死ぬほど気持ち悪い上司のデカチンに何度もイカされる屈辱レ×プ 変態上司にザーメンマーキングされた楓カレン "
+    # text = "5年ぶりの夫以外との濃厚接吻に理性が飛んだ人妻のずっとベロキス中出し性交"
+    text = "私のフェラ、キミの奥さんよりすっごいよ？ ～新婚の部下に追撃フェラチオ女上司～"
+
+    mp_args = ((translator, text) for translator in translators)   
     
+    with ThreadPool(len(translators)) as pool:
+        results = pool.map(ttt, mp_args)
     # main('/mnt/f/store')
     # main('/mnt/f/downloaded/0')
     # main('/mnt/f/downloaded/1')

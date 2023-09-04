@@ -50,6 +50,7 @@ def cover_json_data(movie_info):
     movie_info["studio"] = special_characters_replacement(movie_info["studio"]) if 'studio' in movie_info else ''
     movie_info["title"] = special_characters_replacement(movie_info["title"]) if 'title' in movie_info else ''
     movie_info["original_title"] = movie_info["title"]
+    movie_info["title"] = movie_info["title"].replace(movie_info["actor"].replace(","," "),"").strip()
     movie_info["outline"] = special_characters_replacement(movie_info["outline"]) if 'outline' in movie_info else ''
     movie_info["label"] = special_characters_replacement(movie_info["label"]) if 'label' in movie_info else ''
     movie_info["series"] = special_characters_replacement(movie_info["series"]) if 'series' in movie_info else ''
@@ -59,14 +60,19 @@ def cover_json_data(movie_info):
     title = movie_info["title"]
     outline = movie_info["outline"]
     if config.getBoolValue("translate.switch"):
-        title = ts.translate_text(query_text=title, translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+        translator = config.getStrValue("translate.engine")
+        title = ts.translate_text(query_text=title, translator=translator, from_language='ja', to_language='zh-CHS', timeout=10)
         if outline.strip() != '':
-            outline = ts.translate_text(query_text=outline, translator='caiyun', from_language='ja', to_language='zh-CHS', timeout=10)
+            outline = ts.translate_text(query_text=outline, translator=translator, from_language='ja', to_language='zh-CHS', timeout=10)
     
     outline = f"{movie_info['number']} # {outline if outline.strip() != '' else title}"
 
     movie_info["title"] = title
     movie_info["outline"] = outline
+
+    if 'website' in movie_info:
+        movie_info["website_id"] = movie_info["website"].split("/")[-1]
+    
 
     return movie_info
 

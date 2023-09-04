@@ -13,18 +13,12 @@ def run(numbers:str):
         try:
             logger.info("-------- INFO -------")
             for i, v in json_data.items():
-                # if i == 'outline':
-                #     logger.info(f'{"%-19s" % i} : {len(v)} characters')
-                #     continue
-                # if i == 'actor_photo' or i == 'year':
-                #     continue
-                # if i == 'extrafanart':
-                #     logger.info(f'{"%-19s" % i} : {len(v)} links')
-                #     continue
                 logger.info(f'{i:<{cn_space(i, 19)}} : {v}')
 
             logger.info("-------- INFO -------")
         except:
             pass
-        #TODO 自定义睡眠时间
-        time.sleep(1)
+        interval = config.getIntValue("common.interval")
+        if interval != 0:
+            logger.info(f"Continue in {interval} seconds")
+            time.sleep(interval)

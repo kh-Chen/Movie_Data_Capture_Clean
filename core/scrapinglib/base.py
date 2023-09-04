@@ -20,7 +20,7 @@ class Scraper:
         pass
 
     def search(self, number):
-        available_sources = config.getStrValue("common.data_source")
+        available_sources = config.getStrValue("capture.data_source")
         sources = self.checkAdultSources(number, available_sources)
         json_data= {}
         for source in sources:

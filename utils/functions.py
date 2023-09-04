@@ -45,8 +45,11 @@ def file_not_exist_or_empty(filepath) -> bool:
     return not os.path.isfile(filepath) or os.path.getsize(filepath) == 0
 
 def legalization_of_file_path(filepath:str):
-    suffix = os.path.splitext(filepath)[-1]
-    names = filepath.split("/")
+    temp = os.path.splitext(filepath)
+    suffix = temp[-1]
+    filep = temp[0]
+
+    names = filep.split("/")
     re = []
     for index, name in enumerate(names):
         name = special_characters_replacement(name)
@@ -55,10 +58,10 @@ def legalization_of_file_path(filepath:str):
             max = max - len(suffix)
             
         len_name = 0
-        for index, every_char in enumerate(name):
+        for _index, every_char in enumerate(name):
             len_name += len(every_char.encode())
             if max < len_name:
-                name = name[:index] + '…'
+                name = name[:_index] + '…'
                 break
         if index == len(names)-1:
             name = name + suffix
@@ -86,3 +89,7 @@ def special_characters_replacement(text) -> str:
             replace('&amp;', '＆').
             replace("&", '＆')
             )
+
+
+# if __name__ == '__main__':
+#     print(legalization_of_file_path("/mnt/f/store/JAV_output/NwmXrB 2023 PRED-458-C [4.45∕135] 竹内有紀 我太爱比父亲大一岁的大叔上司了。无法抗拒体液和粘膜持续接触的快感，继续出轨….mp4"))
