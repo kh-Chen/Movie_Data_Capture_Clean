@@ -13,13 +13,15 @@ import xlsxwriter
 columns  = ["number","title","actor","userrating","uservotes","release"]
 title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期"]
 
-def run(url:str):
-    logger.info(f"scraping data from [{url}]...")
+def run(arr:list):
+    url = arr[0]
+    file = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
+    logger.info(f"scraping data from [{url}] save to [{file}]...")
     session = httprequest.request_session()
-    javdb(url, session)
+    javdb(url, file, session)
 
 
-def javdb(url:str, session) : 
+def javdb(url:str, file:str, session) : 
     from .scrapinglib.custom.javdb import Javdb
 
     resp = session.get(url)
@@ -30,7 +32,7 @@ def javdb(url:str, session) :
         return
     logger.info(f"get {len(detail_urls)} urls")
 
-    xlsx = xlsxwriter.Workbook('hello.xlsx')
+    xlsx = xlsxwriter.Workbook(file)
     sheet = xlsx.add_worksheet('Sheet1')
     row = 0
     for index, _title in enumerate(title):

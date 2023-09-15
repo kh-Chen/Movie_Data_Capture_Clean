@@ -9,6 +9,7 @@ from utils.number_parser import get_number
 from utils.functions import file_modification_days
 
 def run():
+    source_folder = config.getStrValue("common.source_folder")
     list = movie_lists()
     logger.info("get movie list: ")
     for str in list:
@@ -17,6 +18,7 @@ def run():
             print(f"{number:{10}}|{str}")
         except Exception as e:
             logger.error(f"getnumber error. file: {str} {e}")
+    logger.info(f"Found {len(list)} movies in {source_folder}")
         
 
 def movie_lists() -> typing.List[str]:
@@ -34,7 +36,9 @@ def movie_lists() -> typing.List[str]:
     total = []
     source = Path(source_folder).resolve()
     
-    for full_name in source.glob(r'**/*'):
+    include_subdirectories = config.getBoolValue("common.include_subdirectories")
+
+    for full_name in source.glob(r'**/*' if include_subdirectories else r'*'):
         if set(full_name.parent.parts) & escape_folder_set:
             continue
         if not full_name.is_file():

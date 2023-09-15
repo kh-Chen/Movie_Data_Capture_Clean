@@ -8,10 +8,13 @@ def init():
     iniparser.parse()
 
 def getStrValAtConf(key:str = "") -> str:
-    return variables.conf[key] if key in variables.conf else ""
+    return str(variables.conf[key]) if key in variables.conf else ""
 
 def getStrValAtArgs(key:str = "") -> str:
-    return variables.args[key] if key in variables.args else ""
+    return str(variables.args[key]) if key in variables.args else ""
+
+def getOriginalValAtArgs(key:str = "") :
+    return variables.args[key] if key in variables.args else None
 
 def getBoolValAtArgs(key:str = "", default:bool=False) -> bool:
     if not key in variables.args:
@@ -29,7 +32,7 @@ def getBoolValAtArgs(key:str = "", default:bool=False) -> bool:
 
 
 def getStrValue(key:str = "") -> str:
-    return getStrValAtConf(key) if getStrValAtArgs(key) == "" else getStrValAtArgs(key)
+    return getStrValAtConf(key) if getOriginalValAtArgs(key) is None else getStrValAtArgs(key)
 
 def getIntValue(key:str = "") -> int:
     value = getStrValue(key)
