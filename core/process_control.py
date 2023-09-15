@@ -32,14 +32,6 @@ def start():
         from . import mode_url_scraper
         mode_url_scraper.run(scraping_url)
         return
-    
-
-    # 检查配置文件参数合法性    --------------------------
-    main_mode = config.getIntValue("common.main_mode")
-    logger.debug(f"common.main_mode [{main_mode}]")
-    if main_mode not in (1, 2, 3):
-        logger.error(f"Main mode must be 1 or 2 or 3! ")
-        return 
 
     # 根据配置寻找将会刮削的所有视频    -------------------
     if config.getBoolValAtArgs("list_movie"):
@@ -48,6 +40,13 @@ def start():
         mode_list_movie.run()
         return
     
+    
+    # 检查配置文件参数合法性    --------------------------
+    main_mode = config.getIntValue("common.main_mode")
+    logger.debug(f"common.main_mode [{main_mode}]")
+    if main_mode not in (1, 2, 3):
+        logger.error(f"Main mode must be 1 or 2 or 3! ")
+        return 
     # 默认模式  -----------------------------------------
     logger.info(f"run in default mode. ")
     from . import mode_normal
