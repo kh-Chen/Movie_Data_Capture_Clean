@@ -46,7 +46,7 @@ class Javdb(Parser):
         self.fixstudio = False
         self.noauth = False
         self.cookies =  {'over18':'1', 'theme':'auto', 'locale':'zh'}
-        self.dbsite = 'https://javdb521.com/'
+        self.dbsite = 'https://javdb522.com/'
         self.number = ''
         self.session = _session if _session is not None else request_session(cookies=self.cookies)
         

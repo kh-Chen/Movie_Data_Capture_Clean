@@ -20,17 +20,9 @@ def run(arr:list):
     session = httprequest.request_session()
     javdb(url, file, session)
 
-
+#url中存在page参数时只拉取本页数据，不含page参数时则自动翻页拉取全部数据
 def javdb(url:str, file:str, session) : 
     from .scrapinglib.custom.javdb import Javdb
-
-    resp = session.get(url)
-    tree = etree.fromstring(resp.text, etree.HTMLParser()) 
-    detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
-
-    if len(detail_urls) == 0:
-        return
-    logger.info(f"get {len(detail_urls)} urls")
 
     xlsx = xlsxwriter.Workbook(file)
     sheet = xlsx.add_worksheet('Sheet1')
@@ -38,19 +30,28 @@ def javdb(url:str, file:str, session) :
     for index, _title in enumerate(title):
         sheet.write(row, index, _title)
 
-    for detail_url in detail_urls:
-        detail_url = urljoin(resp.url, detail_url)
-        parser = Javdb(session)
-        json_data = parser.get_from_detail_url(detail_url)
-        data = cover_json_data(json.loads(json_data))
-        row += 1
-        for index, key in enumerate(columns):
-            sheet.write(row, index, data[key])
-        logger.info(f"{data['number']} loaded.")
-        interval = config.getIntValue("common.interval")
-        if interval != 0:
-            logger.info(f"Continue in {interval} seconds")
-            time.sleep(interval)
-        
+    getOtherPage = 'page=' not in url
+    pageAt = 1
+    while True:
+        resp = session.get(url)
+        tree = etree.fromstring(resp.text, etree.HTMLParser()) 
+        detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
+        logger.info(f"get {len(detail_urls)} urls in page {pageAt}")
+        for detail_url in detail_urls:
+            detail_url = urljoin(resp.url, detail_url)
+            parser = Javdb(session)
+            json_data = parser.get_from_detail_url(detail_url)
+            data = cover_json_data(json.loads(json_data))
+            row += 1
+            for index, key in enumerate(columns):
+                sheet.write(row, index, data[key])
+            logger.info(f"{data['number']} loaded.")
+            interval = config.getIntValue("common.interval")
+            if interval != 0:
+                logger.info(f"Continue in {interval} seconds")
+                time.sleep(interval)
+        if not getOtherPage or len(detail_urls) != 40:
+            break
+        pageAt += 1
+        url = url + '&page=' + str(pageAt)
     xlsx.close()
-
