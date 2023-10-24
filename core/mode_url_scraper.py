@@ -60,7 +60,8 @@ def javdb(url:str, file:str, session) :
             if not getOtherPage or len(detail_urls) != 40:
                 break
             pageAt += 1
-            url = url + '&page=' + str(pageAt)
+            url = url + ('&' if "?" in url else '?') + 'page=' + str(pageAt)
+            
     except Exception as e:
         logger.error(f"url scraper error. {e}")
         logger.error(f"{traceback.format_exc()}")
