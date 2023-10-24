@@ -11,8 +11,8 @@ from utils import httprequest
 from lxml import etree
 import xlsxwriter
 
-columns  = ["number","title","actor","userrating","uservotes","release"]
-title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期"]
+columns  = ["number","title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
+title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
 
 def run(arr:list):
     url = arr[0]
@@ -50,15 +50,29 @@ def javdb(url:str, file:str, session) :
                     continue
                 data = cover_json_data(json.loads(json_data))
                 logger.info(f"{data['number']} loaded.")
+
+                best = getBestMagnet(data["magnets"])
+
                 row += 1
                 for index, key in enumerate(columns):
-                    sheet.write(row, index, data[key])
+                    if "magnet" in key:
+                        if "" == best:
+                            sheet.write(row, index, "")
+                        else:
+                            if key == "magnet_link":
+                                sheet.write(row, index, best["link"])
+                            elif key == "magnet_meta":
+                                sheet.write(row, index, best["meta"])
+                            elif key == "magnet_tags":
+                                sheet.write(row, index, "".join(best["tags"]))
+                    else:
+                        sheet.write(row, index, data[key])
                 
                 if interval != 0:
                     logger.info(f"Continue in {interval} seconds")
                     time.sleep(interval)
-            if not getOtherPage or len(detail_urls) != 40:
-                break
+            # if not getOtherPage or len(detail_urls) != 40:
+            break
             pageAt += 1
             url = url + ('&' if "?" in url else '?') + 'page=' + str(pageAt)
             
@@ -66,3 +80,19 @@ def javdb(url:str, file:str, session) :
         logger.error(f"url scraper error. {e}")
         logger.error(f"{traceback.format_exc()}")
     xlsx.close()
+
+def getBestMagnet(arr):
+    if len(arr) == 0:
+        return ""
+    re = None
+    sc = 0
+    for item in arr:
+        scope = 0
+        scope += len(item["tags"])*5
+        if "1個文件" in item["meta"]:
+            scope += 4
+        else:
+            scope += int(item["meta"][0])
+        if scope > sc:
+            re = item
+    return re
