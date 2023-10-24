@@ -71,8 +71,8 @@ def javdb(url:str, file:str, session) :
                 if interval != 0:
                     logger.info(f"Continue in {interval} seconds")
                     time.sleep(interval)
-            # if not getOtherPage or len(detail_urls) != 40:
-            break
+            if not getOtherPage or len(detail_urls) != 40:
+                break
             pageAt += 1
             url = url + ('&' if "?" in url else '?') + 'page=' + str(pageAt)
             
