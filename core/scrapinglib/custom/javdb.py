@@ -225,3 +225,20 @@ class Javdb(Parser):
                 pass
         return actor_photo
 
+    def getMagnet(self, htmltree):
+
+        # magnet-name column is-four-fifths
+        html_links = self.getTreeAll(htmltree, '//div[@class="magnet-name column is-four-fifths"]')
+        re = []
+        for html_link in html_links:
+            try:
+                re.append({
+                    "name":html_link.xpath('./a/span[@class="name"]/text()')[0].strip(),
+                    "link":html_link.xpath('./a/@href')[0].strip(),
+                    "meta":html_link.xpath('./a/span[@class="meta"]/text()')[0].strip(),
+                    "tags":html_link.xpath('./a/div/span/text()')
+                })
+            except Exception as e:
+                print(e)
+        return re
+

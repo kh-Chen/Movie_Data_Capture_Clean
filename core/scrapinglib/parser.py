@@ -117,6 +117,7 @@ class Parser:
                 'website': self.detailurl,
                 'source': self.source,
                 'imagecut': self.getImagecut(htmltree),
+                'magnets': self.getMagnet(htmltree),
             }
             dic = self.extradict(dic)
         except Exception as e:
@@ -220,6 +221,9 @@ class Parser:
         # if self.imagecut == 1 and self.getUncensored(htmltree):
         #     self.imagecut = 0
         return self.imagecut
+    
+    def getMagnet(self, htmltree):
+        return []
 
     def getUserRating(self, htmltree):
         numstrs = self.getTreeElement(htmltree, self.expr_userrating)
