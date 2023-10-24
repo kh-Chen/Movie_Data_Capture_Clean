@@ -13,7 +13,11 @@ def run(numbers:str):
         try:
             logger.info("-------- INFO -------")
             for i, v in json_data.items():
-                logger.info(f'{i:<{cn_space(i, 19)}} : {v}')
+                if i == 'magnets' and len(v) > 0:
+                    for d in v:
+                        logger.info(f'{i:<{cn_space(i, 14)}}: {d["link"]:<{cn_space(d["link"], 100)}}{d["meta"]:<{cn_space(d["meta"], 15)}} {d["tags"]}')
+                else:
+                    logger.info(f'{i:<{cn_space(i, 14)}}: {v}')
 
             logger.info("-------- INFO -------")
         except:
