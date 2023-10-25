@@ -17,6 +17,13 @@ from utils.httprequest import download
 
 
 def run():
+    # 检查配置文件参数合法性    --------------------------
+    main_mode = config.getIntValue("common.main_mode")
+    logger.debug(f"common.main_mode [{main_mode}]")
+    if main_mode not in (1, 2, 3):
+        logger.error(f"Main mode must be 1 or 2 or 3! ")
+        return 
+
     failed_folder = config.getStrValue("common.failed_output_folder")
     success_folder = config.getStrValue("common.success_output_folder")
     create_folder(failed_folder)
