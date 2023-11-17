@@ -11,6 +11,8 @@ from ..parser import Parser
 import logger
 from .storyline import getStoryline
 
+import config
+
 class Javbus(Parser):
     
     source = 'javbus'
@@ -35,7 +37,10 @@ class Javbus(Parser):
 
     def __init__(self):
         super(Javbus, self).__init__()
-        self.site = 'https://www.dmmbus.lol/'
+        self.site = config.getStrValue("overGFW."+self.source)
+        if self.site is None:
+            self.site = 'https://javbus.com/'
+        
 
     def search(self, number):
         self.number = number

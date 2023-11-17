@@ -7,6 +7,8 @@ from utils.httprequest import request_session
 from ..parser import Parser
 from .storyline import getStoryline
 
+import config
+
 
 class Javdb(Parser):
     source = 'javdb'
@@ -46,7 +48,10 @@ class Javdb(Parser):
         self.fixstudio = False
         self.noauth = False
         self.cookies =  {'over18':'1', 'theme':'auto', 'locale':'zh'}
-        self.dbsite = 'https://javdb522.com/'
+        
+        self.site = config.getStrValue("overGFW."+self.source)
+        if self.site is None:
+            self.site = 'https://javdb.com/'
         self.number = ''
         self.session = _session if _session is not None else request_session(cookies=self.cookies)
         
@@ -70,7 +75,7 @@ class Javdb(Parser):
             return self.dictformat(htmltree)
 
     def queryNumberUrl(self, number):
-        javdb_url = self.dbsite + 'search?q=' + number + '&f=all'
+        javdb_url = self.site + 'search?q=' + number + '&f=all'
         try:
             resp = self.session.get(javdb_url)
         except Exception as e:
@@ -218,7 +223,7 @@ class Javdb(Parser):
             # pic_url = f"https://c1.jdbstatic.com/avatars/{actor_id[:2].lower()}/{actor_id}.jpg"
             # if not self.session.head(pic_url).ok:
             try:
-                pic_url = self.getaphoto(urljoin(self.dbsite, i.attrib['href']), self.session)
+                pic_url = self.getaphoto(urljoin(self.site, i.attrib['href']), self.session)
                 if len(pic_url):
                     actor_photo[i.text] = pic_url
             except:

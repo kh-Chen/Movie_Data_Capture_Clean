@@ -5,10 +5,8 @@ import re
 from lxml import etree, html
 from logging import Logger
 
-# import config
 from utils import httprequest
 import logger
-import config
 
 class Parser:
     """ 基础刮削类
