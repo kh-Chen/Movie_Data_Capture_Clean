@@ -14,6 +14,13 @@ import config
 def start():
     logger.debug("process_control start.")
     # TODO 检查更新 ------------------------------------
+
+    # 运行调试脚本  -------------------------------------
+    if config.getBoolValAtArgs("test_mode"):
+        logger.info(f"Find --test in the parameter list. ")
+        from . import mode_test
+        mode_test.run()
+        return
     
     # 指定番号查询信息  ---------------------------------
     search_for_number = config.getStrValAtArgs("search_for_number")
