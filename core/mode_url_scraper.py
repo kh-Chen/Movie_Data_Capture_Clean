@@ -1,3 +1,4 @@
+import re
 import time
 import traceback
 from urllib.parse import urljoin
@@ -18,14 +19,13 @@ def run(arr:list):
     url = arr[0]
     file = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
     logger.info(f"scraping data from [{url}] save to [{file}]...")
-    session = httprequest.request_session()
-    javdb(url, file, session)
+    javdb(url, file)
 
 #url中存在page参数时只拉取本页数据，不含page参数时则自动翻页拉取全部数据
-def javdb(url:str, file:str, session) : 
+def javdb(url:str, file:str) : 
     from .scrapinglib.custom.javdb import Javdb
     interval = config.getIntValue("common.interval")
-
+    session = httprequest.request_session(cookies=Javdb._cookies)
     xlsx = xlsxwriter.Workbook(file)
     sheet = xlsx.add_worksheet('Sheet1')
 
@@ -40,6 +40,8 @@ def javdb(url:str, file:str, session) :
             resp = session.get(url)
             tree = etree.fromstring(resp.text, etree.HTMLParser()) 
             detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
+            if len(detail_urls) == 0 :
+                detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/div/a/@href')
             logger.info(f"get {len(detail_urls)} urls in page {pageAt}")
             for detail_url in detail_urls:
                 detail_url = urljoin(resp.url, detail_url)
@@ -71,7 +73,7 @@ def javdb(url:str, file:str, session) :
                 if interval != 0:
                     logger.info(f"Continue in {interval} seconds")
                     time.sleep(interval)
-            if not getOtherPage or len(detail_urls) != 40:
+            if not getOtherPage or len(detail_urls) < 20:
                 break
             pageAt += 1
             url = url + ('&' if "?" in url else '?') + 'page=' + str(pageAt)
@@ -84,15 +86,17 @@ def javdb(url:str, file:str, session) :
 def getBestMagnet(arr):
     if len(arr) == 0:
         return ""
-    re = None
+    result = None
     sc = 0
     for item in arr:
         scope = 0
-        scope += len(item["tags"])*5
+        scope += len(item["tags"])*10
         if "1個文件" in item["meta"]:
-            scope += 4
-        else:
-            scope += int(item["meta"][0])
+            scope += 9
+        size = re.search(r'([\d\.]*)(?=GB)',item["meta"]).group(0)
+        if size is not None:
+            scope += float(size)
         if scope > sc:
-            re = item
-    return re
+            sc = scope
+            result = item
+    return result
