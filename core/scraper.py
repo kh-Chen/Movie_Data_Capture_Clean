@@ -61,7 +61,10 @@ def cover_json_data(movie_info):
     outline = movie_info["outline"]
     if config.getBoolValue("translate.switch"):
         translator = config.getStrValue("translate.engine")
-        title = ts.translate_text(query_text=title, translator=translator, from_language='ja', to_language='zh-CHS', timeout=10)
+        try:
+            title = ts.translate_text(query_text=title, translator=translator, from_language='ja', to_language='zh-CHS', timeout=10)
+        except:
+            logger.error("translate title error. text:"+title)
         if outline.strip() != '':
             outline = ts.translate_text(query_text=outline, translator=translator, from_language='ja', to_language='zh-CHS', timeout=10)
     
