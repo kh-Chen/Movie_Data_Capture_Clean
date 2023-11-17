@@ -72,9 +72,8 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         moveFailedFolder(movie_path)
         return
     
-    filename = os.path.basename(movie_path)
-    movie_info["cn_sub"] = "-C" if re.search(r'[-_]C(\.\w+$|-\w+)|\d+ch(\.\w+$|-\w+)', filename, re.I) \
-        or '中文' in filename or '字幕' in filename else ""
+    filename = os.path.basename(movie_path).lower()
+    movie_info["cn_sub"] = "-C" if '-c' in filename or '中文' in filename or '字幕' in filename else ""
     
     main_mode = config.getIntValue("common.main_mode")
     if main_mode == 1:

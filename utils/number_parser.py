@@ -29,26 +29,7 @@ def get_number(file_path: str) -> str:
             file_number = str(re.findall(r'(.+?)\.', filepath)).strip(" [']")
             return file_number
         elif '-' in filepath or '_' in filepath:  # 普通提取番号 主要处理包含减号-和_的番号
-            filepath = G_spat.sub("", filepath)
-            filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filepath))  # 去除文件名中时间
-            filename = str(re.sub("\d{4}-\d{1,2}-\d{1,2}", "", filepath))  # 去除文件名中时间
-            lower_check = filename.lower()
-            if 'fc2' in lower_check:
-                filename = lower_check.replace('--', '-').replace('_', '-').upper()
-            filename = re.sub("[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
-            if not re.search("-|_", filename): # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
-                return str(re.search(r'\w+', filename[:filename.find('.')], re.A).group())
-            file_number =  os.path.splitext(filename)
-            filename = re.search(r'[\w\-_]+', filename, re.A)
-            if filename:
-                file_number = str(filename.group())
-            else:
-                file_number = file_number[0]
-            file_number = re.sub("(-|_)uc$", "", file_number, flags=re.IGNORECASE)
-            file_number = re.sub("(-|_)c$", "", file_number, flags=re.IGNORECASE)
-            if re.search("\d+ch$", file_number, flags=re.I):
-                file_number = file_number[:-2]
-            return file_number.upper()
+            return re.search(r'([a-zA-Z]{2,6})(-|_{1})(\d{2,5})',filepath).group()
         else:  # 提取不含减号-的番号，FANZA CID
             # 欧美番号匹配规则
             oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', filepath)
