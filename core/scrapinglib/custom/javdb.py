@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import re
+import os
+import json
 from urllib.parse import urljoin
 from lxml import etree
 from utils.httprequest import request_session
@@ -47,14 +49,19 @@ class Javdb(Parser):
         super(Javdb, self).__init__()
         self.fixstudio = False
         self.noauth = False
-        self.cookies =  {'over18':'1', 'theme':'auto', 'locale':'zh'}
-        
         self.site = config.getStrValue("overGFW."+self.source)
         if self.site is None:
             self.site = 'https://javdb.com/'
         self.number = ''
-        self.session = _session if _session is not None else request_session(cookies=self.cookies)
-        
+        self.session = _session if _session is not None else request_session(cookies=self.get_cookies())
+
+
+    def get_cookies():
+        if os.path.isfile("javdb.cookies"):
+            with open('javdb.cookies', 'r') as f:
+                return json.load(f)
+        else:
+            return {'over18':'1', 'theme':'auto', 'locale':'zh'}
 
     def search(self, number: str):
         self.number = number

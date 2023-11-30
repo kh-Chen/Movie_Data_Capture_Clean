@@ -25,7 +25,7 @@ def run(arr:list):
 def javdb(url:str, file:str) : 
     from .scrapinglib.custom.javdb import Javdb
     interval = config.getIntValue("common.interval")
-    session = httprequest.request_session(cookies=Javdb._cookies)
+    session = httprequest.request_session(cookies=Javdb.get_cookies())
     xlsx = xlsxwriter.Workbook(file)
     sheet = xlsx.add_worksheet('Sheet1')
 
@@ -93,7 +93,10 @@ def getBestMagnet(arr):
         scope += len(item["tags"])*10
         if "1個文件" in item["meta"]:
             scope += 9
-        size = re.search(r'([\d\.]*)(?=GB)',item["meta"]).group(0)
+        try:
+            size = re.search(r'([\d\.]*)(?=GB|MB)',item["meta"]).group(0)
+        except Exception as e:
+            logger.error(f"get Magnet link size error. {item} {e}")
         if size is not None:
             scope += float(size)
         if scope > sc:
