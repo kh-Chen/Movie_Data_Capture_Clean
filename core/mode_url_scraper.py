@@ -66,7 +66,7 @@ def javdb(url:str, file:str) :
                             elif key == "magnet_meta":
                                 sheet.write(row, index, best["meta"])
                             elif key == "magnet_tags":
-                                sheet.write(row, index, "".join(best["tags"]))
+                                sheet.write(row, index, ",".join(best["tags"]))
                     else:
                         sheet.write(row, index, data[key])
                 
@@ -90,15 +90,27 @@ def getBestMagnet(arr):
     sc = 0
     for item in arr:
         scope = 0
-        scope += len(item["tags"])*10
+        if '字幕' in item["tags"]:
+            scope += 100
+
         if "1個文件" in item["meta"]:
-            scope += 9
+            scope += 4
+
         try:
-            size = re.search(r'([\d\.]*)(?=GB|MB)',item["meta"]).group(0)
+            size = None
+            _re = re.search(r'([\d\.]*)(?=GB)',item["meta"])
+            if _re is None:
+                _re = re.search(r'([\d\.]*)(?=MB)',item["meta"])
+                if _re is not None:
+                    size  = float(_re.group(0))/1000
+            else:
+                size  = float(_re.group(0))         
+
+            if size is not None:
+                scope += size if size < 8 else 8   
         except Exception as e:
             logger.error(f"get Magnet link size error. {item} {e}")
-        if size is not None:
-            scope += float(size)
+
         if scope > sc:
             sc = scope
             result = item
