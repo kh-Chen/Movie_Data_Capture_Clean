@@ -11,7 +11,9 @@ from .scraper import cover_json_data
 from .scrapinglib.custom.javdb import Javdb
 from .mode_list_movie import movie_lists
 from .mode_url_scraper import getBestMagnet
+from utils.decorators import blockprint
 
+@blockprint
 def run():
     print("test mode")
         
