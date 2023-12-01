@@ -35,9 +35,10 @@ def start():
     # 爬取指定url   -------------------------------------
     scraping_url = config.getOriginalValAtArgs("scraping_url")
     if scraping_url is not None and len(scraping_url) != 0:
-        logger.info(f"Find --spider-url in the parameter list. value is [{scraping_url}]. run in scraping mode!")
+        with_cover = config.getOriginalValAtArgs("with_cover")
+        logger.info(f"Find --spider-url in the parameter list. value is [{scraping_url}]. with_cover flag is [{with_cover}]. run in scraping mode!")
         from . import mode_url_scraper
-        mode_url_scraper.run(scraping_url)
+        mode_url_scraper.run(scraping_url,with_cover)
         return
 
     # 根据配置寻找将会刮削的所有视频    -------------------

@@ -1,4 +1,5 @@
 import re
+import os
 import time
 import traceback
 from urllib.parse import urljoin
@@ -7,7 +8,9 @@ import json
 import logger
 import config
 from .scraper import cover_json_data
-from utils import httprequest
+from .mode_search import print_data
+from utils import httprequest, functions
+
 
 from lxml import etree
 import xlsxwriter
@@ -15,14 +18,21 @@ import xlsxwriter
 columns  = ["number","title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
 title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
 
-def run(arr:list):
+def run(arr:list, with_cover:bool):
     url = arr[0]
     file = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
-    logger.info(f"scraping data from [{url}] save to [{file}]...")
-    javdb(url, file)
+    file = os.path.abspath(file)
+    
+    img_dir = None
+    if with_cover:
+        img_dir = file + "_cover"
+        functions.create_folder(img_dir)
+        logger.info(f"scraping data from [{url}] save to [{file}] img download to [{img_dir}]")
+
+    javdb(url, file, img_dir)
 
 #url中存在page参数时只拉取本页数据，不含page参数时则自动翻页拉取全部数据
-def javdb(url:str, file:str) : 
+def javdb(url:str, file:str, img_dir:str) : 
     from .scrapinglib.custom.javdb import Javdb
     interval = config.getIntValue("common.interval")
     session = httprequest.request_session(cookies=Javdb.get_cookies())
@@ -51,10 +61,15 @@ def javdb(url:str, file:str) :
                     logger.info(f"{detail_url} load error.")
                     continue
                 data = cover_json_data(json.loads(json_data))
+                # print_data(data)
                 logger.info(f"{data['number']} loaded.")
+                try:
+                    if img_dir is not None:
+                        httprequest.download(data['cover'],os.path.join(img_dir, data['number'] + functions.image_ext(data['cover'])))
+                except Exception as e:
+                    logger.error("download img error. "+data['cover'])
 
                 best = getBestMagnet(data["magnets"])
-
                 row += 1
                 for index, key in enumerate(columns):
                     if "magnet" in key:
