@@ -172,6 +172,10 @@ def handler_cover(movie_info, movie_target_dir):
 
 
 def moveFailedFolder(movie_path):
+    specify_file = config.getStrValAtArgs("specify_file")
+    if specify_file != '':
+        return #指定文件模式下不输出此文件
+    
     failed_folder = config.getStrValue("common.failed_output_folder")
     new_movie_path = os.path.join(failed_folder, os.path.basename(movie_path))
     mtxt = os.path.abspath(os.path.join(failed_folder, 'where_was_i_before_being_moved.txt'))

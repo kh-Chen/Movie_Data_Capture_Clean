@@ -56,7 +56,7 @@ class Javdb(Parser):
         self.session = _session if _session is not None else request_session(cookies=self.get_cookies())
 
 
-    def get_cookies():
+    def get_cookies(self):
         if os.path.isfile("javdb.cookies"):
             with open('javdb.cookies', 'r') as f:
                 return json.load(f)

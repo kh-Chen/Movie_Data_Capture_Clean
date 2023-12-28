@@ -30,7 +30,13 @@ def start():
         mode_search.run(search_for_number)
         return
     
-    # TODO 指定文件刮削 ---------------------------------
+    # 指定文件刮削 ---------------------------------
+    specify_file = config.getStrValAtArgs("specify_file")
+    if specify_file != '':
+        logger.info(f"Find --specify-file in the parameter list. value is [{specify_file}]. run in specify-file mode!")
+        from . import mode_normal
+        mode_normal.do_capture_with_single_file(specify_file)
+        return
 
     # 爬取指定url   -------------------------------------
     scraping_url = config.getOriginalValAtArgs("scraping_url")
