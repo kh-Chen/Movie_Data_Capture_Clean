@@ -44,3 +44,6 @@ def getIntValue(key:str = "") -> int:
 
 def getBoolValue(key:str = "") -> int:
     return bool(getIntValue(key))
+
+def setStrValAtConf(key:str, val:str) -> str:
+    variables.conf[key] = val

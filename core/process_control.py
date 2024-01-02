@@ -35,6 +35,8 @@ def start():
     if specify_file != '':
         logger.info(f"Find --specify-file in the parameter list. value is [{specify_file}]. run in specify-file mode!")
         from . import mode_normal
+        config.setStrValAtConf("common.failed_output_folder", os.path.dirname(specify_file))
+        config.setStrValAtConf("common.success_output_folder", os.path.dirname(specify_file))
         mode_normal.do_capture_with_single_file(specify_file)
         return
 
