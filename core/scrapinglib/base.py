@@ -10,10 +10,13 @@ import config
 
 class Scraper:
 
+    # adult_full_sources = [
+    #     'javlibrary', 'javdb', 'javbus', 'airav', 'fanza', 'xcity', 'jav321',
+    #     'mgstage', 'fc2', 'avsox', 'dlsite', 'carib', 'madou', 'msin',
+    #     'getchu', 'gcolle', 'javday', 'pissplay', 'javmenu', 'pcolle', 'caribpr'
+    # ]
     adult_full_sources = [
-        'javlibrary', 'javdb', 'javbus', 'airav', 'fanza', 'xcity', 'jav321',
-        'mgstage', 'fc2', 'avsox', 'dlsite', 'carib', 'madou', 'msin',
-        'getchu', 'gcolle', 'javday', 'pissplay', 'javmenu', 'pcolle', 'caribpr'
+        'javdb', 'javbus', 'avsox'
     ]
 
     def __init__(self):
@@ -23,6 +26,10 @@ class Scraper:
         available_sources = config.getStrValue("capture.data_source")
         sources = self.checkAdultSources(number, available_sources)
         json_data= {}
+        if len(sources) == 0:
+            logger.error(f"available source list is empty. number[{number}]")
+            return None
+        
         for source in sources:
             logger.debug(f'using source [{source}]')
             try:
@@ -78,7 +85,7 @@ class Scraper:
             elif "pcolle" in sources and "pcolle" in lo_file_number:
                 sources = ["pcolle"]
             elif "fc2" in lo_file_number:
-                sources = ["fc2", "avsox", "msin"]
+                sources = ["avsox", "fc2", "msin"]
             elif (re.search(r"\d+\D+-", file_number) or "siro" in lo_file_number):
                 if "mgstage" in sources:
                     sources = insert(sources, "mgstage")

@@ -5,48 +5,11 @@ import typing
 
 import logger
 
-G_spat = re.compile(
+G_SPAT = re.compile(
     "^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
     "^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
     "(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",
     re.IGNORECASE)
-
-
-def get_number(file_path: str) -> str:
-    """
-    从文件路径中提取番号
-    """
-    filepath = os.path.basename(file_path)
-    try:
-
-        file_number = get_number_by_dict(filepath)
-        if file_number:
-            return file_number
-        elif '字幕组' in filepath or 'SUB' in filepath.upper() or re.match(r'[\u30a0-\u30ff]+', filepath):
-            filepath = G_spat.sub("", filepath)
-            filepath = re.sub("\[.*?\]","",filepath)
-            filepath = filepath.replace(".chs", "").replace(".cht", "")
-            file_number = str(re.findall(r'(.+?)\.', filepath)).strip(" [']")
-            return file_number
-        elif '-' in filepath or '_' in filepath:  # 普通提取番号 主要处理包含减号-和_的番号
-            return re.search(r'([a-zA-Z]{2,6})(-|_{1})(\d{2,5})',filepath).group()
-        else:  # 提取不含减号-的番号，FANZA CID
-            # 欧美番号匹配规则
-            oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', filepath)
-            if oumei:
-                return oumei.group()
-            try:
-                return str(
-                    re.findall(r'(.+?)\.',
-                               str(re.search('([^<>/\\\\|:""\\*\\?]+)\\.\\w+$', filepath).group()))).strip(
-                    "['']").replace('_', '-')
-            except:
-                return str(re.search(r'(.+?)\.', filepath)[0])
-    except Exception as e:
-        logger.error(f'[-]Number Parser exception: {e} [{file_path}]')
-        return None
-        
-
 
 # 按javdb数据源的命名规范提取number
 G_TAKE_NUM_RULES = {
@@ -61,55 +24,71 @@ G_TAKE_NUM_RULES = {
     'mdbk': lambda x: str(re.search(r'mdbk(-|_)(\d{4})', x, re.I).group()),
     'mdtm': lambda x: str(re.search(r'mdtm(-|_)(\d{4})', x, re.I).group()),
     'caribpr': lambda x: str(re.search(r'\d{6}(-|_)\d{3}', x, re.I).group()).replace('_', '-'),
+    'fc2': lambda x: "FC2-" + str(re.search(r'(fc2)(-|_){0,1}(ppv){0,1}(-|_){0,1}(\d{7})(?=\D)', x, re.I).group(5)),
 }
 
-
-def get_number_by_dict(filename: str) -> typing.Optional[str]:
+def get_number(file_path: str) -> str:
+    """
+    从文件路径中提取番号
+    """
+    filename = os.path.basename(file_path)
+    filename = G_SPAT.sub("", filename)
     try:
-        for k, v in G_TAKE_NUM_RULES.items():
-            if re.search(k, filename, re.I):
-                return v(filename)
-    except:
-        pass
-    return None
+        try:
+            for k, v in G_TAKE_NUM_RULES.items():
+                if re.search(k, filename, re.I):
+                    return v(filename)
+        except Exception as e:
+            logger.error(f"get_number with G_TAKE_NUM_RULES from [{filename}] error. [{e}]")
+            # print(f"get_number with G_TAKE_NUM_RULES from [{filename}] error. [{e}]")
+
+        result = re.search(r'([a-zA-Z]{2,6})(-|_{0,1})(\d{2,5})',filename)
+        if result is None:
+            return None
+
+        return "-".join(result.group(1,3))
+    except Exception as e:
+        logger.error(f'Number Parser exception: {e} [{file_path}]')
+        # print(f'Number Parser exception: {e} [{file_path}]')
+        return None
 
 
-class Cache_uncensored_conf:
-    prefix = None
+# class Cache_uncensored_conf:
+#     prefix = None
 
-    def is_empty(self):
-        return bool(self.prefix is None)
+#     def is_empty(self):
+#         return bool(self.prefix is None)
 
-    def set(self, v: list):
-        if not v or not len(v) or not len(v[0]):
-            raise ValueError('input prefix list empty or None')
-        s = v[0]
-        if len(v) > 1:
-            for i in v[1:]:
-                s += f"|{i}.+"
-        self.prefix = re.compile(s, re.I)
+#     def set(self, v: list):
+#         if not v or not len(v) or not len(v[0]):
+#             raise ValueError('input prefix list empty or None')
+#         s = v[0]
+#         if len(v) > 1:
+#             for i in v[1:]:
+#                 s += f"|{i}.+"
+#         self.prefix = re.compile(s, re.I)
 
-    def check(self, number):
-        if self.prefix is None:
-            raise ValueError('No init re compile')
-        return self.prefix.match(number)
-
-
-G_cache_uncensored_conf = Cache_uncensored_conf()
+#     def check(self, number):
+#         if self.prefix is None:
+#             raise ValueError('No init re compile')
+#         return self.prefix.match(number)
 
 
-# ========================================================================是否为无码
-def is_uncensored(number) -> bool:
-    if re.match(
-            r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
-            number,
-            re.I
-    ):
-        return True
-    if G_cache_uncensored_conf.is_empty():
-        uncensored_prefix = "PT-,S2M,BT,LAF,SMD,SMBD,SM3D2DBD,SKY-,SKYHD,CWP,CWDV,CWBD,CW3D2DBD,MKD,MKBD,MXBD,MK3D2DBD,MCB3DBD,MCBD,RHJ,MMDV"
-        G_cache_uncensored_conf.set(uncensored_prefix.split(','))
-    return bool(G_cache_uncensored_conf.check(number))
+# G_cache_uncensored_conf = Cache_uncensored_conf()
+
+
+# # ========================================================================是否为无码
+# def is_uncensored(number) -> bool:
+#     if re.match(
+#             r'[\d-]{4,}|\d{6}_\d{2,3}|(cz|gedo|k|n|red-|se)\d{2,4}|heyzo.+|xxx-av-.+|heydouga-.+|x-art\.\d{2}\.\d{2}\.\d{2}',
+#             number,
+#             re.I
+#     ):
+#         return True
+#     if G_cache_uncensored_conf.is_empty():
+#         uncensored_prefix = "PT-,S2M,BT,LAF,SMD,SMBD,SM3D2DBD,SKY-,SKYHD,CWP,CWDV,CWBD,CW3D2DBD,MKD,MKBD,MXBD,MK3D2DBD,MCB3DBD,MCBD,RHJ,MMDV"
+#         G_cache_uncensored_conf.set(uncensored_prefix.split(','))
+#     return bool(G_cache_uncensored_conf.check(number))
 
 
 if __name__ == "__main__":
@@ -149,84 +128,17 @@ if __name__ == "__main__":
         "rctd-461-C-cD4.mp4",  # cD1 Cd1 cd1 CD1 最终生成.nfo时统一为大写CD1
         "MD-123.ts",
         "MDSR-0001-ep2.ts",
-        "MKY-NS-001.mp4"
+        "MKY-NS-001.mp4",
+        "FC2-PPV-1234567.mp4",
+        "FC2PPV-1234567.mp4",
+        "FC2-1234567.mp4",
+        "FC21234567.mp4",
+        "FC2-PPV-1234567-1.mp4",
+        "FC2-1234567啊啊啊啊.mp4",
     )
 
 
-    def evprint(evstr):
-        code = compile(evstr, "<string>", "eval")
-        print("{1:>20} # '{0}'".format(evstr[18:-2], eval(code)))
-
-
     for t in test_use_cases:
-        evprint(f'get_number(True, "{t}")')
+        print(t, get_number(t))
 
-    if len(sys.argv) <= 1 or not re.search('^[A-Z]:?', sys.argv[1], re.IGNORECASE):
-        sys.exit(0)
 
-    # 使用Everything的ES命令行工具搜集全盘视频文件名作为用例测试number数据，参数为盘符 A .. Z 或带盘符路径
-    # https://www.voidtools.com/support/everything/command_line_interface/
-    # ES命令行工具需要Everything文件搜索引擎处于运行状态，es.exe单个执行文件需放入PATH路径中。
-    # Everything是免费软件
-    # 示例：
-    # python.exe .\number_parser.py ALL                 # 从所有磁盘搜索视频
-    # python.exe .\number_parser.py D                   # 从D盘搜索
-    # python.exe .\number_parser.py D:                  # 同上
-    # python.exe .\number_parser.py D:\download\JAVs    # 搜索D盘的\download\JAVs目录，路径必须带盘符
-    # ==================
-    # Linux/WSL1|2 使用mlocate(Ubuntu/Debian)或plocate(Debian sid)搜集全盘视频文件名作为测试用例number数据
-    # 需安装'sudo apt install mlocate或plocate'并首次运行sudo updatedb建立全盘索引
-    # MAC OS X 使用findutils的glocate，需安装'sudo brew install findutils'并首次运行sudo gupdatedb建立全盘索引
-    # 示例：
-    # python3 ./number_parser.py ALL
-    # import subprocess
-
-    # ES_search_path = "ALL disks"
-    # if sys.argv[1] == "ALL":
-    #     if sys.platform == "win32":
-    #         # ES_prog_path = 'C:/greensoft/es/es.exe'
-    #         ES_prog_path = 'es.exe'  # es.exe需要放在PATH环境变量的路径之内
-    #         ES_cmdline = f'{ES_prog_path} -name size:gigantic ext:mp4;avi;rmvb;wmv;mov;mkv;flv;ts;webm;iso;mpg;m4v'
-    #         out_bytes = subprocess.check_output(ES_cmdline.split(' '))
-    #         out_text = out_bytes.decode('gb18030')  # 中文版windows 10 x64默认输出GB18030，此编码为UNICODE方言与UTF-8系全射关系无转码损失
-    #         out_list = out_text.splitlines()
-    #     elif sys.platform in ("linux", "darwin"):
-    #         ES_prog_path = 'locate' if sys.platform == 'linux' else 'glocate'
-    #         ES_cmdline = r"{} -b -i --regex '\.mp4$|\.avi$|\.rmvb$|\.wmv$|\.mov$|\.mkv$|\.webm$|\.iso$|\.mpg$|\.m4v$'".format(
-    #             ES_prog_path)
-    #         out_bytes = subprocess.check_output(ES_cmdline.split(' '))
-    #         out_text = out_bytes.decode('utf-8')
-    #         out_list = [os.path.basename(line) for line in out_text.splitlines()]
-    #     else:
-    #         print('[-]Unsupported platform! Please run on OS Windows/Linux/MacOSX. Exit.')
-    #         sys.exit(1)
-    # else:  # Windows single disk
-    #     if sys.platform != "win32":
-    #         print('[!]Usage: python3 ./number_parser.py ALL')
-    #         sys.exit(0)
-    #     # ES_prog_path = 'C:/greensoft/es/es.exe'
-    #     ES_prog_path = 'es.exe'  # es.exe需要放在PATH环境变量的路径之内
-    #     if os.path.isdir(sys.argv[1]):
-    #         ES_search_path = sys.argv[1]
-    #     else:
-    #         ES_search_path = sys.argv[1][0] + ':/'
-    #         if not os.path.isdir(ES_search_path):
-    #             ES_search_path = 'C:/'
-    #         ES_search_path = os.path.normcase(ES_search_path)
-    #     ES_cmdline = f'{ES_prog_path} -path {ES_search_path} -name size:gigantic ext:mp4;avi;rmvb;wmv;mov;mkv;webm;iso;mpg;m4v'
-    #     out_bytes = subprocess.check_output(ES_cmdline.split(' '))
-    #     out_text = out_bytes.decode('gb18030')  # 中文版windows 10 x64默认输出GB18030，此编码为UNICODE方言与UTF-8系全射关系无转码损失
-    #     out_list = out_text.splitlines()
-    # print(f'\n[!]{ES_prog_path} is searching {ES_search_path} for movies as number parser test cases...')
-    # print(f'[+]Find {len(out_list)} Movies.')
-    # for filename in out_list:
-    #     try:
-    #         n = get_number(True, filename)
-    #         if n:
-    #             print('  [{0}] {2}# {1}'.format(n, filename, '#无码' if is_uncensored(n) else ''))
-    #         else:
-    #             print(f'[-]Number return None. # {filename}')
-    #     except Exception as e:
-    #         print(f'[-]Number Parser exception: {e} [{filename}]')
-
-    # sys.exit(0)
