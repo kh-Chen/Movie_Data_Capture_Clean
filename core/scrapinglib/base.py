@@ -16,7 +16,7 @@ class Scraper:
     #     'getchu', 'gcolle', 'javday', 'pissplay', 'javmenu', 'pcolle', 'caribpr'
     # ]
     adult_full_sources = [
-        'javdb', 'javbus', 'avsox'
+        'javdb', 'javbus', 'avsox', 'msin'
     ]
 
     def __init__(self):
@@ -85,7 +85,7 @@ class Scraper:
             elif "pcolle" in sources and "pcolle" in lo_file_number:
                 sources = ["pcolle"]
             elif "fc2" in lo_file_number:
-                sources = ["avsox", "fc2", "msin"]
+                sources = ["msin", "avsox", "fc2"]
             elif (re.search(r"\d+\D+-", file_number) or "siro" in lo_file_number):
                 if "mgstage" in sources:
                     sources = insert(sources, "mgstage")
