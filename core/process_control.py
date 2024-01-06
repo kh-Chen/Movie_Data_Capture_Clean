@@ -22,6 +22,13 @@ def start():
         mode_test.run()
         return
     
+    # 运行自动评分模式  -------------------------------------
+    if config.getBoolValAtArgs("rate_mode"):
+        logger.info(f"Find --rate in the parameter list. ")
+        from . import mode_autorate
+        mode_autorate.run()
+        return
+    
     # 指定番号查询信息  ---------------------------------
     search_for_number = config.getStrValAtArgs("search_for_number")
     if search_for_number != '':

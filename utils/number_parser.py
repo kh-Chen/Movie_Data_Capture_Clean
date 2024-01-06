@@ -42,7 +42,9 @@ def get_number(file_path: str) -> str:
             logger.error(f"get_number with G_TAKE_NUM_RULES from [{filename}] error. [{e}]")
             # print(f"get_number with G_TAKE_NUM_RULES from [{filename}] error. [{e}]")
 
-        result = re.search(r'([a-zA-Z]{2,6})(-|_{0,1})(\d{2,5})',filename)
+        result = re.search(r'([a-zA-Z]{2,6})(-|_{1,})(\d{2,5})',filename)
+        if result is None:
+            result = re.search(r'([a-zA-Z]{2,6})(-|_{0,1})(\d{2,5})',filename)
         if result is None:
             return None
 
