@@ -12,7 +12,7 @@ from config import constant
 from . import mode_list_movie
 from . import scraper
 from utils.number_parser import get_number
-from utils.functions import create_folder,image_ext,file_not_exist_or_empty,legalization_of_file_path
+from utils.functions import create_folder,image_ext,file_not_exist_or_empty,legalization_of_file_path,cn_space
 from utils.httprequest import download
 
 
@@ -54,7 +54,7 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
     
     number = spec_number if spec_number is not None else get_number(os.path.basename(movie_path))
     movie_path = os.path.abspath(movie_path)
-    logger.info(f"[{number}] As Number Processing for '{movie_path}'")
+    logger.info(f"[{number}] As Number Processing for [{movie_path[0:cn_space(movie_path, 130)]}]")
 
     if number is None:
         logger.error("number empty ERROR.")
@@ -130,9 +130,9 @@ def main_mode_1(movie_path, movie_info):
     
     # TODO link mode
     new_movie_path = legalization_of_file_path(os.path.join(movie_target_dir, target_file_name + movie_suffix))
-    logger.info(f"{movie_path} move to {new_movie_path}")
+    logger.info(f"move to [{new_movie_path[0:cn_space(new_movie_path, 150)]}]")
     shutil.move(movie_path, new_movie_path)
-    logger.info("move OK")
+    # logger.info("move OK")
 
     for sub_suffix in constant.G_SUB_SUFFIX:
         l = len(movie_path)-len(movie_suffix)

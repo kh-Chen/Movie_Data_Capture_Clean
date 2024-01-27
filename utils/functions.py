@@ -3,7 +3,7 @@ from unicodedata import category
 from pathlib import Path
 
 def cn_space(v: str, n: int) -> int:
-    return n - [category(c) for c in v].count('Lo')
+    return n - [category(c) for c in v[0:n]].count('Lo')
 
 def file_modification_days(filename: str) -> int:
     """
