@@ -1,18 +1,30 @@
 import os
 import sys 
 import platform
+import signal
+import time
+import threading
 
 import logger
 import config
 from config import constant
 import core.process_control as process_control
+from utils.event import fire_event
 
 def signal_handler(*args):
-    logger.info("Ctrl+C detected, Exit.")
-    os._exit(0)
+    logger.info("Ctrl+C detected! ")
+
+    threading.Thread(target=fire_event, args=["SIGINT"]).start()
+    def a():
+        wait = 5
+        for i in range(wait, -1, -1):
+            logger.info(f"Exit in {i}...")
+            time.sleep(1)
+        os._exit(0)
+    threading.Thread(target=a).start()
 
 if __name__ == '__main__':
-    # signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     config.init()
 
     enable_debug = config.getBoolValue("common.enable_debug")

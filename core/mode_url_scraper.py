@@ -10,6 +10,7 @@ import config
 from .scraper import cover_json_data
 from .mode_search import print_data
 from utils import httprequest, functions
+from utils.event import register_event
 
 
 from lxml import etree
@@ -18,7 +19,14 @@ import xlsxwriter
 columns  = ["number","title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
 title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
 
+exit_now = False
+def SIGINT_callback():
+    global exit_now
+    exit_now = True
+    logger.info(f"SIGINT_callback: exit_now={exit_now}")
+    
 def run(arr:list, with_cover:bool):
+    register_event("SIGINT", callback=SIGINT_callback)
     url = arr[0]
     file = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
     file = os.path.abspath(file)
@@ -47,6 +55,8 @@ def javdb(url:str, file:str, img_dir:str) :
         getOtherPage = 'page=' not in url
         pageAt = 1
         while True:
+            if exit_now:
+                break    
             resp = session.get(url)
             tree = etree.fromstring(resp.text, etree.HTMLParser()) 
             detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
@@ -54,6 +64,8 @@ def javdb(url:str, file:str, img_dir:str) :
                 detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/div/a/@href')
             logger.info(f"get {len(detail_urls)} urls in page {pageAt}")
             for detail_url in detail_urls:
+                if exit_now:
+                    break    
                 detail_url = urljoin(resp.url, detail_url)
                 parser = Javdb(session)
                 json_data = parser.get_from_detail_url(detail_url)
