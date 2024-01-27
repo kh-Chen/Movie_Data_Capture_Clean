@@ -162,3 +162,5 @@ cython_debug/
 *.cookies
 *.xlsx
 *_cover/
+monitor.sh
+start_monitor.sh
