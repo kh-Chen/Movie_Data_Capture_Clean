@@ -7,6 +7,7 @@ from logging import Logger
 from .parser import Parser
 import logger
 import config
+from utils.decorators import blockprint
 
 class Scraper:
 
@@ -22,6 +23,7 @@ class Scraper:
     def __init__(self):
         pass
 
+    @blockprint
     def search(self, number):
         available_sources = config.getStrValue("capture.data_source")
         sources = self.checkAdultSources(number, available_sources)
