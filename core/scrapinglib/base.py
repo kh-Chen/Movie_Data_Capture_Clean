@@ -39,6 +39,7 @@ class Scraper:
                 parser_type = getattr(module, source.capitalize())
                 parser: Parser = parser_type()
                 data = parser.search(number)
+                logger.debug(f'parser.search re data ==> {data}')
                 if data == 404:
                     continue
                 json_data = json.loads(data)
