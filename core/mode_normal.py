@@ -17,39 +17,53 @@ from utils.httprequest import download
 
 
 def run():
-    # 检查配置文件参数合法性    --------------------------
+    # 检查配置文件参数合法性
     main_mode = config.getIntValue("common.main_mode")
     logger.debug(f"common.main_mode [{main_mode}]")
     if main_mode not in (1, 2, 3):
         logger.error(f"Main mode must be 1 or 2 or 3! ")
         return 
 
+    # 初始化目标目录
     failed_folder = config.getStrValue("common.failed_output_folder")
     success_folder = config.getStrValue("common.success_output_folder")
     create_folder(failed_folder)
     create_folder(success_folder)
 
+    # 计算本次需处理的影片总数
     stop_count = config.getIntValue("common.stop_counter")
-
     movie_list = mode_list_movie.movie_lists()
     logger.info(f'Find {len(movie_list)} movies. stop_counter[{stop_count}]')
-
     count_all = len(movie_list) if stop_count == 0 else min(len(movie_list), stop_count)
+
     processed = 0
-    for movie_path in movie_list: 
+    for movie_path in movie_list:
+        # 计算并打印进度
         processed = processed + 1
         percentage = str(processed / int(count_all) * 100)[:4] + '%'
         logger.info(f"-----------running {percentage} [{processed}/{count_all}]-----------")
+        # 核心处理函数
         do_capture_with_single_file(movie_path)
+        # 结束判断
         if processed >= count_all:
-            logger.info("Stop counter triggered!")
+            if stop_count == count_all:
+                logger.info("Stop counter triggered!")
             break
+        # 延时处理，避免封IP
         interval = config.getIntValue("common.interval")
         if interval != 0:
             logger.info(f"Continue in {interval} seconds")
             time.sleep(interval)
 
-
+'''
+单文件刮削入口函数，其中只做三件事：
+番号提取 get_number()
+影片基础信息刮削 scraper.get_base_data_by_number,get_data_at_file_name
+根据main_mode配置调用处理模块
+参数列表：
+movie_path 目标影片路径
+spec_number 指定番号，此参数不为空时强制使用此参数作为影片番号进行处理。
+'''
 def do_capture_with_single_file(movie_path: str, spec_number:str=None):
     
     number = spec_number if spec_number is not None else get_number(os.path.basename(movie_path))
@@ -84,9 +98,16 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         pass
 
 
+'''
+处理模块-1
+目前只实现了这一个模式，原始工程的模式2和模式3暂未实现
+参数列表：
+movie_path 目标影片路径
+movie_info 目标影片详细信息
+'''
 def main_mode_1(movie_path, movie_info):
     number = movie_info["number"]
-
+    # 生成影片目标目录
     movie_target_dir = create_movie_folder_by_rule(movie_info)
     if movie_target_dir is None:
         moveFailedFolder(movie_path)
@@ -99,6 +120,7 @@ def main_mode_1(movie_path, movie_info):
     if config.getBoolValue("capture.get_cover_switch"):
         fanart_path, poster_path, thumb_path = handler_cover(movie_info, movie_target_dir)
         logger.info("cover data OK")
+    
     # 下载预告片
     # if conf.is_trailer() and movie_info.get('trailer'):
     #     trailer_download(movie_info.get('trailer'), leak_word, c_word, hack_word, number, path, movie_path)
@@ -112,6 +134,7 @@ def main_mode_1(movie_path, movie_info):
     # if conf.download_actor_photo_for_kodi():
     #     actor_photo_download(movie_info.get('actor_photo'), path, number)
     
+    # 根据movie_file_name_template配置模板生成影片文件名
     movie_suffix = os.path.splitext(movie_path)[-1]
     movie_file_name_template = config.getStrValue("template.movie_file_name_template")
     logger.debug(f"movie_file_name_template: [{movie_file_name_template}]")
@@ -128,12 +151,14 @@ def main_mode_1(movie_path, movie_info):
             moveFailedFolder(movie_path)
             return
     
-    # TODO link mode
+    # 生成影片最终全路径，进行长度控制
     new_movie_path = legalization_of_file_path(os.path.join(movie_target_dir, target_file_name + movie_suffix))
     logger.info(f"move to [{new_movie_path[0:cn_space(new_movie_path, 150)]}]")
+    # 移动影片
     shutil.move(movie_path, new_movie_path)
     # logger.info("move OK")
 
+    # 如果影片原始目录中存在同名字幕文件，则一并移动
     for sub_suffix in constant.G_SUB_SUFFIX:
         l = len(movie_path)-len(movie_suffix)
         sub_path = movie_path[:l]+sub_suffix
@@ -143,6 +168,9 @@ def main_mode_1(movie_path, movie_info):
             shutil.move(sub_path, target_sub_path)
 
 
+''' 
+封面文件下载器
+'''
 def handler_cover(movie_info, movie_target_dir):
     number = movie_info["number"]
     fanart_path = ""
@@ -169,8 +197,10 @@ def handler_cover(movie_info, movie_target_dir):
     return fanart_path, poster_path, thumb_path
 
 
-
-
+'''
+将影片移动至failed_output_folder配置的失败目录下。
+并将文件的原始位置记录到where_was_i_before_being_moved.txt文件中
+'''
 def moveFailedFolder(movie_path):
     specify_file = config.getStrValAtArgs("specify_file")
     if specify_file != '':
@@ -193,6 +223,9 @@ def moveFailedFolder(movie_path):
         logger.error(f"File Moving to FailedFolder unsuccessful! file: [{movie_path}], msg:[{e}]")
 
 
+'''
+根据配置的location_template模板生成影片的目标路径并创建文件夹。
+'''
 def create_movie_folder_by_rule(movie_info):
     success_folder = config.getStrValue("common.success_output_folder")
     location_template = config.getStrValue("template.location_template")

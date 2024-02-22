@@ -1,9 +1,14 @@
+import os
+import re
 from .scrapinglib.base import Scraper
 import logger
 import config
 from utils.functions import special_characters_replacement
 import translators as ts
 
+'''
+刮削器转接层。将外围业务逻辑与核心刮削器scrapinglib解耦
+'''
 def get_base_data_by_number(number:str):
     logger.debug(f"get Data for number [{number}]...")
     sc = Scraper()
@@ -21,6 +26,9 @@ def get_base_data_by_number(number:str):
     return cover_json_data(json_data)
 
 
+    
+
+'''格式化scrapinglib的刮削结果'''
 def cover_json_data(movie_info):
     actor_list = ["佚名"]
     if 'actor' in movie_info:
