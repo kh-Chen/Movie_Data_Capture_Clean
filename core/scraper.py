@@ -26,6 +26,24 @@ def get_base_data_by_number(number:str):
     return cover_json_data(json_data)
 
 
+'''
+在文件名中查找信息并补充进movie_info对象
+传入文件名或文件路径
+'''
+def get_data_at_file_name(movie_path:str):
+    filename = os.path.basename(movie_path).lower()
+    movie_info = {}
+    movie_info["cn_sub"] = ''
+    if re.search(r'(-|_)(c|C)(n|N){0,1}(?=[^a-z0-9])', filename) is not None or '中文' in filename or '字幕' in filename:
+        movie_info["cn_sub"] = "-C"
+
+    movie_info["part_num"] = 0
+    movie_info["part_sub"] = ''
+    result = re.search(r'(-|_)(cd)(\d+)', filename)
+    if result is not None :
+        movie_info["part_num"] = result.group(3)
+        movie_info["part_sub"] = f'-CD{movie_info["part_num"]}'
+    return movie_info
     
 
 '''格式化scrapinglib的刮削结果'''

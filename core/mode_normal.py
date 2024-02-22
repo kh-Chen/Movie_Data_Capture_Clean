@@ -76,18 +76,18 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         return
     
     try:
-        movie_info = scraper.get_base_data_by_number(number)
+        info_scraper = scraper.get_base_data_by_number(number)
         logger.info("base data OK")
     except Exception as e:
         logger.error(f"get_base_data_by_number. number:[{number}] info: {e}" )
-        movie_info = None
+        info_scraper = None
 
-    if movie_info is None:
+    if info_scraper is None:
         moveFailedFolder(movie_path)
         return
     
-    filename = os.path.basename(movie_path).lower()
-    movie_info["cn_sub"] = "-C" if '-c' in filename or '中文' in filename or '字幕' in filename else ""
+    info_name = scraper.get_data_at_file_name(movie_path)
+    movie_info = {**info_scraper, **info_name}
     
     main_mode = config.getIntValue("common.main_mode")
     if main_mode == 1:
