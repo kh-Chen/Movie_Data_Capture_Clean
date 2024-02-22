@@ -1,4 +1,5 @@
 import time
+import traceback
 
 import logger
 import config
@@ -27,5 +28,6 @@ def print_data(json_data):
                 logger.info(f'{i:<{cn_space(i, 14)}}: {v}')
 
         logger.info("-------- INFO -------")
-    except:
-        logger.error("print_data error.")
+    except Exception as e:
+        logger.error(f"print_data error. {e}")
+        logger.debug(f"{traceback.format_exc()}")
