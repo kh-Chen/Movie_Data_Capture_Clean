@@ -33,6 +33,7 @@ def run():
     movies = os.listdir(dir_delete_4)
     for movie in movies:
         full_path = os.path.join(dir_delete_4,movie)
+        logger.info(f"auto rate movie: {full_path}")
         number = get_number(movie)
         if number is None:
             continue
@@ -42,6 +43,7 @@ def run():
     movies = os.listdir(dir_delete_5)
     for movie in movies:
         full_path = os.path.join(dir_delete_5,movie)
+        logger.info(f"auto rate movie: {full_path}")
         number = get_number(movie)
         if number is None:
             continue
@@ -85,4 +87,4 @@ def auto_rate(db,number,scope):
         req_data["_method"] = method.get('value')
 
     response = db.session.post(f"{db.site}{action_url}",data=req_data)
-    print(response.status_code)
+    logger.info(f"auto rate response: [{response.status_code}] [{response.text}]")
