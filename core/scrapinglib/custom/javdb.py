@@ -62,6 +62,15 @@ class Javdb(Parser):
                 return json.load(f)
         else:
             return {'over18':'1', 'theme':'auto', 'locale':'zh'}
+        
+    @staticmethod
+    def set_cookies(cookies):
+        if os.path.isfile("javdb.cookies"):
+            with open('javdb.cookies', 'r+') as f:
+                jsonstr = json.dumps(cookies, indent=1)
+                f.seek(0)
+                f.truncate()
+                f.write(jsonstr)
 
     def search(self, number: str):
         self.number = number

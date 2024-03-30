@@ -20,8 +20,8 @@ def run():
     
     db = Javdb()
 
-    movies = os.listdir(dir_keep)
-    for movie in movies:
+    movies_dir_keep = os.listdir(dir_keep)
+    for movie in movies_dir_keep:
         full_path = os.path.join(dir_keep,movie)
         logger.info(f"auto rate movie: {full_path}")
         number = get_number(movie)
@@ -30,8 +30,8 @@ def run():
         auto_rate(db,number,"5")
         shutil.move(full_path, os.path.join(dir_keep_to,movie))
 
-    movies = os.listdir(dir_delete_4)
-    for movie in movies:
+    movies_dir_delete_4 = os.listdir(dir_delete_4)
+    for movie in movies_dir_delete_4:
         full_path = os.path.join(dir_delete_4,movie)
         logger.info(f"auto rate movie: {full_path}")
         number = get_number(movie)
@@ -40,8 +40,8 @@ def run():
         auto_rate(db,number,"4")
         os.remove(full_path)
         
-    movies = os.listdir(dir_delete_5)
-    for movie in movies:
+    movies_dir_delete_5 = os.listdir(dir_delete_5)
+    for movie in movies_dir_delete_5:
         full_path = os.path.join(dir_delete_5,movie)
         logger.info(f"auto rate movie: {full_path}")
         number = get_number(movie)
@@ -49,6 +49,20 @@ def run():
             continue
         auto_rate(db,number,"5")
         os.remove(full_path)
+
+    # 测试，session保活
+    if len(movies_dir_keep) == 0 and len(movies_dir_delete_4) == 0 and len(movies_dir_delete_5) == 0:
+        re = db.session.get(f"{db.site}/users/want_watch_videos")
+        for k, v in re.cookies.items():
+            if k == '_jdb_session':
+                # logger.info(v)
+                cookies = Javdb.get_cookies()
+                # logger.info(cookies['_jdb_session'])
+                cookies['_jdb_session'] = v
+                Javdb.set_cookies(cookies)
+        
+        
+
 
     logger.info("auto rate end.")
 
@@ -87,4 +101,8 @@ def auto_rate(db,number,scope):
         req_data["_method"] = method.get('value')
 
     response = db.session.post(f"{db.site}{action_url}",data=req_data)
-    logger.info(f"auto rate response: [{response.status_code}] [{response.text}]")
+    
+    if '保持七天登入狀態' in response.text:
+        logger.info(f"cookie out date!")
+    else:
+        logger.info(f"auto rate response: [{response.status_code}] [{response.text}]")
