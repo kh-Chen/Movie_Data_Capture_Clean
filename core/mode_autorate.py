@@ -17,50 +17,51 @@ def run():
     dir_keep_to = config.getStrValue("autoRate.dir_keep_to")
     dir_delete_4 = config.getStrValue("autoRate.dir_delete_4")
     dir_delete_5 = config.getStrValue("autoRate.dir_delete_5")
-    
+    movies_dir_keep = []
+    movies_dir_delete_4 = []
+    movies_dir_delete_5 = []
     db = Javdb()
+    
+    if os.path.exists(dir_keep):
+        movies_dir_keep = os.listdir(dir_keep)
+        for movie in movies_dir_keep:
+            full_path = os.path.join(dir_keep,movie)
+            logger.info(f"auto rate movie: {full_path}")
+            number = get_number(movie)
+            if number is None:
+                continue
+            auto_rate(db,number,"5")
+            shutil.move(full_path, os.path.join(dir_keep_to,movie))
 
-    movies_dir_keep = os.listdir(dir_keep)
-    for movie in movies_dir_keep:
-        full_path = os.path.join(dir_keep,movie)
-        logger.info(f"auto rate movie: {full_path}")
-        number = get_number(movie)
-        if number is None:
-            continue
-        auto_rate(db,number,"5")
-        shutil.move(full_path, os.path.join(dir_keep_to,movie))
-
-    movies_dir_delete_4 = os.listdir(dir_delete_4)
-    for movie in movies_dir_delete_4:
-        full_path = os.path.join(dir_delete_4,movie)
-        logger.info(f"auto rate movie: {full_path}")
-        number = get_number(movie)
-        if number is None:
-            continue
-        auto_rate(db,number,"4")
-        os.remove(full_path)
+    if os.path.exists(dir_delete_4):
+        movies_dir_delete_4 = os.listdir(dir_delete_4)
+        for movie in movies_dir_delete_4:
+            full_path = os.path.join(dir_delete_4,movie)
+            logger.info(f"auto rate movie: {full_path}")
+            number = get_number(movie)
+            if number is None:
+                continue
+            auto_rate(db,number,"4")
+            os.remove(full_path)
         
-    movies_dir_delete_5 = os.listdir(dir_delete_5)
-    for movie in movies_dir_delete_5:
-        full_path = os.path.join(dir_delete_5,movie)
-        logger.info(f"auto rate movie: {full_path}")
-        number = get_number(movie)
-        if number is None:
-            continue
-        auto_rate(db,number,"5")
-        os.remove(full_path)
+    if os.path.exists(dir_delete_5):
+        movies_dir_delete_5 = os.listdir(dir_delete_5)
+        for movie in movies_dir_delete_5:
+            full_path = os.path.join(dir_delete_5,movie)
+            logger.info(f"auto rate movie: {full_path}")
+            number = get_number(movie)
+            if number is None:
+                continue
+            auto_rate(db,number,"5")
+            os.remove(full_path)
 
     # 测试，session保活
     if len(movies_dir_keep) == 0 and len(movies_dir_delete_4) == 0 and len(movies_dir_delete_5) == 0:
         re = db.session.get(f"{db.site}/users/want_watch_videos")
+        cookies = Javdb.get_cookies()
         for k, v in re.cookies.items():
-            if k == '_jdb_session':
-                # logger.info(v)
-                cookies = Javdb.get_cookies()
-                # logger.info(cookies['_jdb_session'])
-                cookies['_jdb_session'] = v
-                Javdb.set_cookies(cookies)
-        
+            cookies[k] = v
+        Javdb.set_cookies(cookies)
         
 
 
