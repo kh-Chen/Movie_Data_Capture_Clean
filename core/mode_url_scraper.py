@@ -11,6 +11,7 @@ from .scraper import cover_json_data
 from .mode_search import print_data
 from utils import httprequest, functions
 from utils.event import register_event
+from utils.number_parser import get_number
 
 
 from lxml import etree
@@ -18,6 +19,7 @@ import xlsxwriter
 
 columns  = ["number","title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
 title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
+downloaded_numbers = []
 
 exit_now = False
 def SIGINT_callback():
@@ -28,16 +30,24 @@ def SIGINT_callback():
 def run(arr:list, with_cover:bool):
     register_event("SIGINT", callback=SIGINT_callback)
     url = arr[0]
-    file = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
-    file = os.path.abspath(file)
+    xlsxfile = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
+    xlsxfile = os.path.abspath(xlsxfile)
+
+    dirs = ["/mnt/f/1","/mnt/f/downloaded","/mnt/f/store"]
+    
+    for dir in dirs:
+        filelist = os.listdir(dir)
+        for file in filelist:
+            if os.path.isfile(os.path.join(dir,file)):
+                downloaded_numbers.append(get_number(file))
     
     img_dir = None
     if with_cover:
-        img_dir = file + "_cover"
+        img_dir = xlsxfile + "_cover"
         functions.create_folder(img_dir)
-        logger.info(f"scraping data from [{url}] save to [{file}] img download to [{img_dir}]")
+        logger.info(f"scraping data from [{url}] save to [{xlsxfile}] img download to [{img_dir}]")
 
-    javdb(url, file, img_dir)
+    javdb(url, xlsxfile, img_dir)
 
 #url中存在page参数时只拉取本页数据，不含page参数时则自动翻页拉取全部数据
 def javdb(url:str, file:str, img_dir:str) : 
@@ -75,6 +85,8 @@ def javdb(url:str, file:str, img_dir:str) :
                 data = cover_json_data(json.loads(json_data))
                 # print_data(data)
                 logger.info(f"{data['number']} loaded.")
+                if data['number'] in downloaded_numbers:
+                    continue
                 try:
                     if img_dir is not None:
                         httprequest.download(data['cover'],os.path.join(img_dir, data['number'] + functions.image_ext(data['cover'])))

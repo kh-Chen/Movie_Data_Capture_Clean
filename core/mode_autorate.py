@@ -3,6 +3,7 @@
 '''文件夹监视由外部处理，本工具不做常驻进程'''
 
 import os
+import time
 import shutil
 import requests
 import logger
@@ -70,7 +71,7 @@ def run():
 
 def auto_rate(db,number,scope):
     url = db.queryNumberUrl(number)
-    requests.get(url)
+    #requests.get(url)
     deatilpage = db.session.get(url).text
     if os.path.exists("./test.html"):
         os.remove("./test.html")
@@ -101,9 +102,19 @@ def auto_rate(db,number,scope):
     if method is not None:
         req_data["_method"] = method.get('value')
 
-    response = db.session.post(f"{db.site}{action_url}",data=req_data)
+    for i in range(5, -1, -1):
+        try:
+            response = db.session.post(f"{db.site}{action_url}",data=req_data)
+        except Exception as e:
+            logger.error(f"retry... number:[{i}] info: {e}" )
+            time.sleep(5)
     
     if '保持七天登入狀態' in response.text:
         logger.info(f"cookie out date!")
     else:
         logger.info(f"auto rate response: [{response.status_code}] [{response.text}]")
+    
+    interval = config.getIntValue("common.interval")
+    if interval != 0:
+        logger.info(f"Continue in {interval} seconds")
+        time.sleep(interval)
