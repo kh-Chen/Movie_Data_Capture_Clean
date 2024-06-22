@@ -30,12 +30,22 @@ def get_base_data_by_number(number:str):
 在文件名中查找信息并补充进movie_info对象
 传入文件名或文件路径
 '''
-def get_data_at_file_name(movie_path:str):
+def get_data_at_file_name(movie_path:str, number:str):
     filename = os.path.basename(movie_path).lower()
+    number = number.lower()
     movie_info = {}
-    movie_info["cn_sub"] = ''
-    if re.search(r'(-|_)(c|C)(n|N){0,1}(?=[^a-z0-9])', filename) is not None or '中文' in filename or '字幕' in filename:
-        movie_info["cn_sub"] = "-C"
+    movie_info["hacked_cn_suffix"] = ''
+    
+    has_cn = number+"-uc" in filename or number+"-c" in filename or '中文' in filename or '字幕' in filename
+    hacked = number+"-uc" in filename or '破解' in filename or '无码' in filename
+
+    if has_cn and hacked:
+        movie_info["hacked_cn_suffix"] = "-UC"
+    elif has_cn:
+        movie_info["hacked_cn_suffix"] = "-C"
+    elif hacked:
+        movie_info["hacked_cn_suffix"] = "-U"
+    
 
     movie_info["part_num"] = 0
     movie_info["part_sub"] = ''
@@ -88,7 +98,7 @@ def cover_json_data(movie_info):
     if config.getBoolValue("translate.switch"):
         translator = config.getStrValue("translate.engine")
         try:
-            title = ts.translate_text(query_text=title, translator=translator, from_language='jp', to_language='zh', timeout=10)
+            title = ts.translate_text(query_text=title, translator=translator, from_language='ja', to_language='zh', timeout=10)
         except Exception as e:
             logger.error(f"translate title error. text:{title} e:{e}")
         if outline.strip() != '':

@@ -86,7 +86,7 @@ def do_capture_with_single_file(movie_path: str, spec_number:str=None):
         moveFailedFolder(movie_path)
         return
     
-    info_name = scraper.get_data_at_file_name(movie_path)
+    info_name = scraper.get_data_at_file_name(movie_path,number)
     movie_info = {**info_scraper, **info_name}
     
     main_mode = config.getIntValue("common.main_mode")
@@ -183,9 +183,9 @@ def handler_cover(movie_info, movie_target_dir):
         poster_path = f"poster{ext}"
         thumb_path = f"thumb{ext}"
         if config.getBoolValue("capture.cover_naming_with_number"):
-            fanart_path = f"{number}{movie_info['cn_sub']}-fanart{ext}"
-            poster_path = f"{number}{movie_info['cn_sub']}-poster{ext}"
-            thumb_path = f"{number}{movie_info['cn_sub']}-thumb{ext}"
+            fanart_path = f"{number}{movie_info['hacked_cn_suffix']}-fanart{ext}"
+            poster_path = f"{number}{movie_info['hacked_cn_suffix']}-poster{ext}"
+            thumb_path = f"{number}{movie_info['hacked_cn_suffix']}-thumb{ext}"
         
         full_filepath = os.path.join(movie_target_dir, thumb_path)
         succ = image_download(cover_url, full_filepath)
