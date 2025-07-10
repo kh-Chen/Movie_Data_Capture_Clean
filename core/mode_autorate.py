@@ -25,6 +25,7 @@ def run():
     
     if os.path.exists(dir_keep):
         movies_dir_keep = os.listdir(dir_keep)
+        list_id = config.getStrValue("autoRate.db_list_id")
         for movie in movies_dir_keep:
             full_path = os.path.join(dir_keep,movie)
             logger.info(f"auto rate movie: {full_path}")
@@ -33,6 +34,11 @@ def run():
                 continue
             auto_rate(db,number,"5")
             shutil.move(full_path, os.path.join(dir_keep_to,movie))
+            try:
+                add_list(db,number,list_id)
+            except Exception as e:
+                logger.error(f"add_list error. number:[{number}] info: {e}" )
+            
 
     if os.path.exists(dir_delete_4):
         movies_dir_delete_4 = os.listdir(dir_delete_4)
@@ -68,6 +74,43 @@ def run():
 
     logger.info("auto rate end.")
 
+def add_list(db,number,list_id):
+    '''添加到列表'''
+    if list_id is None or list_id == "":
+        return
+    
+    url = db.queryNumberUrl(number)
+    videoid = url.rpartition('/')[-1]
+    
+    req_data = {
+        "video_id":videoid,
+        "checked":True,
+        "list_id":list_id,
+    }
+    
+    headers = {
+        "Content-Type": "application/json",  # 关键头信息
+        "Referer": url,
+    }
+
+    for i in range(5, -1, -1):
+        try:
+            response = db.session.post(f"{db.site}/users/save_video_to_list",json=req_data, headers=headers)
+        except Exception as e:
+            logger.error(f"retry save_video_to_list ... number:[{i}] info: {e}" )
+            time.sleep(5)
+    
+    if '保持七天登入狀態' in response.text:
+        logger.info(f"cookie out date!")
+    else:
+        logger.info(f"add list [{number}] response: [{response.status_code}] [{response.text}] ")
+    
+    interval = config.getIntValue("common.interval")
+    if interval != 0:
+        logger.info(f"Continue in {interval} seconds")
+        time.sleep(interval)
+
+    
 
 def auto_rate(db,number,scope):
     url = db.queryNumberUrl(number)
@@ -83,7 +126,7 @@ def auto_rate(db,number,scope):
         result = htmltree.xpath("//form[@id='edit_review']")
 
     if result is None or len(result) == 0:
-        print("error!")
+        print("error! see ./test.html")
         with open("./test.html", 'w', encoding='utf-8') as f:
             f.write(deatilpage)
         exit()
@@ -112,7 +155,7 @@ def auto_rate(db,number,scope):
     if '保持七天登入狀態' in response.text:
         logger.info(f"cookie out date!")
     else:
-        logger.info(f"auto rate response: [{response.status_code}] [{response.text}]")
+        logger.info(f"auto rate [{number}] response: [{response.status_code}] [{response.text}] ")
     
     interval = config.getIntValue("common.interval")
     if interval != 0:

@@ -111,13 +111,20 @@ def request_session(cookies=None, ua: str=None):
                     status_forcelist=[429, 500, 502, 503, 504])
     session.mount("https://", TimeoutHTTPAdapter(max_retries=retries, timeout=timeout))
     session.mount("http://", TimeoutHTTPAdapter(max_retries=retries, timeout=timeout))
+    headers = {"User-Agent": ua or G_USER_AGENT,"Accept": "*/*",}
+
+    t = cookies.pop('X-CSRF-Token', None)
+    if t is not None:
+        headers["X-CSRF-Token"] = t
+    session.headers = headers
+
     if isinstance(cookies, dict) and len(cookies):
         requests.utils.add_dict_to_cookiejar(session.cookies, cookies)
     if verify:
         session.verify = verify
     if proxies:
         session.proxies = proxies
-    session.headers = {"User-Agent": ua or G_USER_AGENT}
+    
     return session
 
 
