@@ -20,7 +20,7 @@ def format_cell(cell_value, column_title):
     
     # 根据列标题应用不同的字符限制
     if column_title == "标题":
-        max_chars = 40
+        max_chars = 46
     elif column_title == "演员":
         max_chars = 10
     else:
@@ -41,7 +41,7 @@ def pad_to_width(text, width):
     padding = width - current_width
     return text + ' ' * padding
 
-def read_xlsx(file_path):
+def read_xlsx(file_path, num=10):
     try:
         # 加载工作簿
         workbook = openpyxl.load_workbook(file_path, data_only=True)
@@ -90,31 +90,32 @@ def read_xlsx(file_path):
                 all_rows.append(visible_cells)
         
         # 计算分隔线长度
-        total_display_width = sum(col_display_widths) + (len(col_display_widths) - 1) * 3
+        total_display_width = sum(col_display_widths) + (len(col_display_widths) - 1) * 3 + 2
         separator = "-" * total_display_width
         
         # 打印表头
+        testarr = [0,3,4,5,6]
+
         print(separator)
         header_parts = []
         for i, header in enumerate(visible_headers):
             padded_header = pad_to_width(header, col_display_widths[i])
-            header_parts.append(padded_header)
-        print(" | ".join(header_parts))
+            header_parts.append(padded_header+ ("" if i in testarr else "\t"))
+        print("| "+"| ".join(header_parts)+"|")
         print(separator)
         
         # 打印数据行
-        for row_data in all_rows:
+        
+        
+        for row_data in random.sample(all_rows, num):
             row_parts = []
             for i, cell in enumerate(row_data):
                 padded_cell = pad_to_width(cell, col_display_widths[i])
-                row_parts.append(padded_cell )
-            print(" | ".join(row_parts))
+                row_parts.append(padded_cell + ("" if i in testarr else "\t"))
+            print("| "+"| ".join(row_parts)+"|")
         
         print(separator)
-        print(f"共读取 {sheet.max_row} 行，显示 {len(visible_headers)} 列（已移除 {len(masked_columns)} 列）")
-        
-        if masked_columns:
-            print(f"注意: 已移除列标题为'磁力'的列")
+        print(f"共读取 {sheet.max_row} 行，显示 {num} 行数据")
         
     except FileNotFoundError:
         print(f"错误: 文件 '{file_path}' 未找到")
@@ -123,7 +124,7 @@ def read_xlsx(file_path):
         print(f"读取文件时出错: {e}")
         sys.exit(1)
 
-def randomlink(xlsxfile):
+def randomlink(xlsxfile,num = 10):
     workbook = openpyxl.load_workbook(xlsxfile)
     sheet = workbook.active
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
@@ -138,26 +139,31 @@ def randomlink(xlsxfile):
             break
     
     
-    if len(linkarr) <= 10:
+    if len(linkarr) <= num:
         for link in linkarr:
             print(link)
     else:
-        for link in random.sample(linkarr, 10):
+        for link in random.sample(linkarr, num):
             print(link)
         
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("用法: python read_xlsx.py random/print <文件路径>")
-        print("示例: python read_xlsx.py random data.xlsx")
+    if len(sys.argv) != 4:
+        print("用法: python read_xlsx.py random/print <文件路径> <数量>")
+        print("示例: python read_xlsx.py random data.xlsx 10")
         sys.exit(1)
     
     mode = sys.argv[1]
     file_path = sys.argv[2]
-    
+    num = sys.argv[3]
+    if num.isdigit(): 
+        num = int(num)
+    else:
+        print("数量参数必须是一个整数")
+        sys.exit(1)
 
     if mode == "random":
-        randomlink(file_path)
+        randomlink(file_path,num)
     elif mode == "print":
-        read_xlsx(file_path)
+        read_xlsx(file_path,num)
     
