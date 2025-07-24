@@ -3,11 +3,12 @@ import openpyxl
 import sys
 import unicodedata
 
+chararr = ['…','●']
 def get_display_width(text):
     """计算字符串的显示宽度（考虑宽窄字符）"""
     width = 0
     for char in text:
-        char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W', 'A') else 1
+        char_width = 2 if char not in chararr and unicodedata.east_asian_width(char) in ('F', 'W', 'A') else 1
         width += char_width
     return width
 
@@ -47,8 +48,6 @@ def read_xlsx(file_path, num=10):
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         # 获取第一个工作表
         sheet = workbook.active
-        
-        print(f"文件内容 ({sheet.title}):")
         
         # 获取列标题并确定需要移除的列
         header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
