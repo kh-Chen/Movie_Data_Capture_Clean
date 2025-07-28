@@ -3,7 +3,7 @@ import openpyxl
 import sys
 import unicodedata
 
-chararr = ['…','●']
+chararr = ['…','●','○','·','°','×','→','‘']
 def get_display_width(text):
     """计算字符串的显示宽度（考虑宽窄字符）"""
     width = 0
@@ -42,7 +42,7 @@ def pad_to_width(text, width):
     padding = width - current_width
     return text + ' ' * padding
 
-def read_xlsx(file_path, num=10):
+def read_xlsx(file_path, num=10,col=[]):
     try:
         # 加载工作簿
         workbook = openpyxl.load_workbook(file_path, data_only=True)
@@ -56,14 +56,15 @@ def read_xlsx(file_path, num=10):
         column_titles = []  # 存储每列的原始标题
         
         # 识别需要移除的列（标题为"磁力"的列）
+        noprintcol = ["磁力", "原标题"]
         for col_idx, header in enumerate(header_row):
-            if header == "磁力":
+            if (len(col) == 0 and header in noprintcol) or (len(col) > 0 and header not in col):
                 masked_columns.add(col_idx)
             else:
                 header_text = format_cell(header, None)  # 格式化表头
                 visible_headers.append(header_text)
                 column_titles.append(header)  # 存储原始列标题
-        
+
         # 计算每列的最大显示宽度（考虑宽窄字符）
         col_display_widths = [get_display_width(header) for header in visible_headers]
         
@@ -89,28 +90,24 @@ def read_xlsx(file_path, num=10):
                 all_rows.append(visible_cells)
         
         # 计算分隔线长度
-        total_display_width = sum(col_display_widths) + (len(col_display_widths) - 1) * 3 + 2
+        total_display_width = sum(col_display_widths) + (len(col_display_widths) - 1) * 3 - 2
         separator = "-" * total_display_width
         
         # 打印表头
-        testarr = [0,3,4,5,6]
-
         print(separator)
         header_parts = []
         for i, header in enumerate(visible_headers):
             padded_header = pad_to_width(header, col_display_widths[i])
-            header_parts.append(padded_header+ ("" if i in testarr else "\t"))
+            header_parts.append(padded_header)
         print("| "+"| ".join(header_parts)+"|")
         print(separator)
         
         # 打印数据行
-        
-        
         for row_data in random.sample(all_rows, num):
             row_parts = []
             for i, cell in enumerate(row_data):
                 padded_cell = pad_to_width(cell, col_display_widths[i])
-                row_parts.append(padded_cell + ("" if i in testarr else "\t"))
+                row_parts.append(padded_cell)
             print("| "+"| ".join(row_parts)+"|")
         
         print(separator)
@@ -147,7 +144,7 @@ def randomlink(xlsxfile,num = 10):
         
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) < 4:
         print("用法: python read_xlsx.py random/print <文件路径> <数量>")
         print("示例: python read_xlsx.py random data.xlsx 10")
         sys.exit(1)
@@ -161,8 +158,12 @@ if __name__ == "__main__":
         print("数量参数必须是一个整数")
         sys.exit(1)
 
+
     if mode == "random":
         randomlink(file_path,num)
     elif mode == "print":
-        read_xlsx(file_path,num)
+        col = []
+        if len(sys.argv) > 4:
+            col = sys.argv[4:]
+        read_xlsx(file_path,num,col)
     

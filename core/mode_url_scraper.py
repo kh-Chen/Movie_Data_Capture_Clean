@@ -17,9 +17,10 @@ from .scrapinglib.custom.javdb import Javdb
 from lxml import etree
 import openpyxl
 
-columns  = ["number","title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
-title    = ["番号",  "标题",  "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
+columns  = ["number","title","original_title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
+title    = ["番号",  "标题",  "原标题",        "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
 downloaded_numbers = []
+numberindex = {}
 
 exit_now = False
 def SIGINT_callback():
@@ -52,13 +53,14 @@ def run(arr:list, with_cover:bool):
         rows_to_delete = []
         for col_idx, header in enumerate(header_row):
             if header == "番号":
-                for row_idx,row in enumerate(sheet.iter_rows(min_row=2, values_only=True),start=1):
+                for row_idx,row in enumerate(sheet.iter_rows(min_row=2, values_only=True),start=2):
                     number = row[col_idx]
                     if number:
-                        if number in downloaded_numbers:
+                        if number in downloaded_numbers or number == '':
                             rows_to_delete.append(row_idx)
                         else:
                             downloaded_numbers.append(number)
+                            numberindex[number] = row_idx
                 break
         if len(rows_to_delete) > 0:
             logger.info(f"delete {len(rows_to_delete)} rows in xlsx file.")
@@ -122,6 +124,14 @@ def want_watch_videos(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int,
             number = tag_num.text
             if number in downloaded_numbers:
                 logger.info(f"{number} already downloaded or in xlsx, skip.")
+                # tag_title = a.find('div[@class="video-title"]') 
+                # text_nodes = tag_title.xpath('text()')
+                # original_title = ''.join(text_nodes).strip()
+                # if number in numberindex:
+                #     sheet.cell(row=numberindex[number], column=3).value = original_title
+                continue
+            if number == '':
+                logger.error(f"no number in {etree.tostring(a, encoding='unicode',pretty_print=True)}")
                 continue
             logger.info(f"get {number} from {detail_url}")
         else:
