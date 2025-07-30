@@ -7,8 +7,8 @@ def translate_text(text: str):
     """使用配置的翻译引擎翻译文本"""
     translator = config.getStrValue("translate.engine")
 
-    if translator == 'deepseek':
-        return translate_deepseek(text)
+    if translator.startswith('deepseek') :
+        return translate_deepseek(text,translator)
     
     try:
         if not text.strip():
@@ -19,7 +19,7 @@ def translate_text(text: str):
         logger.error(f"Translation error: {e}")
         return text  # 如果翻译失败，返回原文本
     
-def translate_deepseek(text: str):
+def translate_deepseek(text: str,model: str):
     
     api = config.getStrValue("translate.api")
     if not api:
@@ -32,10 +32,19 @@ def translate_deepseek(text: str):
     "Authorization": f"Bearer {api}"
     }
 
+    prompt = '''
+你是一个日译中的翻译大师，任务是为我翻译日本成人影片的标题。要求如下：
+1. 翻译结果需要保持原意不变，并保证语句通顺。
+2. 当遇到多义词时，请牢记当前翻译的是日本成人影片的标题，选择最合适的含义进行翻译。
+3. 用词尽量简单直接。不要擅自引用成语等内容。
+4. 如原文中存在露骨词汇，请直接翻译出来，不要做任何删减。
+5. 翻译完成后请结合中文语境，适当调整标点符号的使用，不要出现长难句。
+6. 我希望你只回复翻译结果，不要写任何解释。
+    '''
     data = {
-        "model": "deepseek-reasoner", # 指定使用 R1 模型（deepseek-reasoner）或者 V3 模型（deepseek-chat）
+        "model": model, # 指定使用 R1 模型（deepseek-reasoner）或者 V3 模型（deepseek-chat）
         "messages": [
-        {"role": "system", "content": "你是一个日译中的翻译大师，任务是为我翻译日本成人影片的标题。翻译结果需要保持原意不变，并保证语句通顺。用词尽量简单直接。如原文中存在露骨词汇，请直接翻译出来，不要做任何删减。我希望你只回复翻译结果，不要写任何解释。"},
+        {"role": "system", "content": prompt},
         {"role": "user", "content": text}
         ],
         "stream": False # 关闭流式传输

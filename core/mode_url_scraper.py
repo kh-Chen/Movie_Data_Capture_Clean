@@ -9,7 +9,7 @@ import logger
 import config
 from .scraper import cover_json_data
 from .mode_search import print_data
-from utils import httprequest, functions
+from utils import httprequest, functions, translate
 from utils.event import register_event
 from utils.number_parser import get_number
 from .scrapinglib.custom.javdb import Javdb
@@ -122,17 +122,27 @@ def want_watch_videos(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int,
         tag_num = a.find('div[@class="video-title"]/strong')
         if tag_num != None:
             number = tag_num.text
-            if number in downloaded_numbers:
-                logger.info(f"{number} already downloaded or in xlsx, skip.")
-                # tag_title = a.find('div[@class="video-title"]') 
-                # text_nodes = tag_title.xpath('text()')
-                # original_title = ''.join(text_nodes).strip()
-                # if number in numberindex:
-                #     sheet.cell(row=numberindex[number], column=3).value = original_title
-                continue
             if number == '':
                 logger.error(f"no number in {etree.tostring(a, encoding='unicode',pretty_print=True)}")
                 continue
+            if number in downloaded_numbers:
+                logger.info(f"{number} already downloaded or in xlsx, skip.")
+                #-----为标题栏为空的数据补充翻译。因为有时候翻译质量不高，可以手动清空格子，这样下次运行时会重新翻译。
+                tag_title = a.find('div[@class="video-title"]') 
+                text_nodes = tag_title.xpath('text()')
+                original_title = ''.join(text_nodes).strip()
+                if number in numberindex:
+                    title = sheet.cell(row=numberindex[number], column=2).value
+                    if title is None:
+                        title = ""
+                    if title.strip() == "":
+                        sheet.cell(row=numberindex[number], column=3).value = original_title
+                        zh = translate.translate_text(original_title)
+                        sheet.cell(row=numberindex[number], column=2).value = zh
+                        logger.info(f"{number} -- {zh}")
+                #-----------------------------------------------------------------------------------
+                continue
+
             logger.info(f"get {number} from {detail_url}")
         else:
             logger.error(f"no number in {detail_url}")

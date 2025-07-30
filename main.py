@@ -16,7 +16,7 @@ def signal_handler(*args):
 
     threading.Thread(target=fire_event, args=["SIGINT"]).start()
     def a():
-        wait = 5
+        wait = 10
         for i in range(wait, -1, -1):
             logger.info(f"Exit in {i}...")
             time.sleep(1)
