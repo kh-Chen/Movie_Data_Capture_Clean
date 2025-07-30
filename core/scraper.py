@@ -91,6 +91,8 @@ def cover_json_data(movie_info):
         try:
             keys = config.getStrValue("translate.values").split(',')
             for key in keys:
+                if movie_info[key] is None or movie_info[key] == '':
+                    continue
                 value = translate.translate_text(movie_info[key])
                 movie_info[key] = special_characters_replacement(value)
         except Exception as e:
