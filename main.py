@@ -25,6 +25,8 @@ def signal_handler(*args):
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     config.init()
 
     enable_debug = config.getBoolValue("common.enable_debug")

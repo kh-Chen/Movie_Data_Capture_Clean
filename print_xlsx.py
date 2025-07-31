@@ -101,14 +101,11 @@ def adjust_column_widths(all_width, col_width_arr):
 
 def pad_to_width(text, width):
     """填充文本到指定显示宽度（考虑宽窄字符）"""
-    # print("pad_to_width", text, width)
     while True:
-        # time.sleep(1)
         current_width = get_display_width(text)
         _charlen = len(text)-2
         if current_width >= width:
             text = text[:_charlen] + "…"
-            # print(text)
         else:
             break
     
@@ -170,7 +167,7 @@ def read_xlsx(file_path, num=10,cols=[]):
             
             col_display_widths_print = adjust_column_widths(terminal_width-charlen,col_display_widths_avg)
             
-        print(col_display_widths_print)
+        # print(col_display_widths_print)
         separator = "-" * terminal_width
         for idx, print_data_line in enumerate(print_data):
             if idx == 0:
@@ -182,6 +179,7 @@ def read_xlsx(file_path, num=10,cols=[]):
                 line = "| ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
                 print("| "+line+"|")
         print(separator)
+        print(f"总计{max_row-1} 行，显示 {len(print_data)-1} 行 ")
 
     except FileNotFoundError:
         print(f"错误: 文件 '{file_path}' 未找到")
