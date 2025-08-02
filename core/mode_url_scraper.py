@@ -55,12 +55,13 @@ def run(arr:list, with_cover:bool):
             if header == "番号":
                 for row_idx,row in enumerate(sheet.iter_rows(min_row=2, values_only=True),start=2):
                     number = row[col_idx]
-                    if number:
-                        if number in downloaded_numbers or number == '':
-                            rows_to_delete.append(row_idx)
-                        else:
-                            downloaded_numbers.append(number)
-                            numberindex[number] = row_idx
+                    if number is None:
+                        number = ''
+                    if number in downloaded_numbers or number == '':
+                        rows_to_delete.append(row_idx)
+                    else:
+                        downloaded_numbers.append(number)
+                        numberindex[number] = row_idx
                 break
         if len(rows_to_delete) > 0:
             logger.info(f"delete {len(rows_to_delete)} rows in xlsx file.")
@@ -193,7 +194,7 @@ def other(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int, sheet:openp
 def get_data(detail_url:str,parser=None):
     json_data = parser.get_from_detail_url(detail_url)
     if not json_data:
-        logger.info(f"{detail_url} load error.")
+        logger.error(f"{detail_url} load error.")
         return None
     return cover_json_data(json.loads(json_data))
 
@@ -219,6 +220,8 @@ def cover_wdata(data:dict):
                 elif key == "magnet_tags":
                     wdata.append(",".join(best["tags"]))
         else:
+            if data[key] is None or data[key] == '':
+                logger.error(f"empty data.. {key} ")
             wdata.append(data[key])
     return wdata
 

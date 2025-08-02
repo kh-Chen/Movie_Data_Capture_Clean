@@ -7,97 +7,151 @@ import traceback
 import time
 
 
-chararr = ['…','●','○','·','°','×','→','‘','―','★','—','”','“','≫','≪']
+chararr = ['…','●','○','·','°','×','→','‘','―','★','—','”','“','≫','≪','◆','♂']
 def get_display_width(text):
     """计算字符串的显示宽度（考虑宽窄字符）"""
     width = 0
     
     for char in str(text):
-        char_width = 2 if char not in chararr and unicodedata.east_asian_width(char) in ('F', 'W', 'A') else 1
+        # char_width = 2 if char not in chararr and unicodedata.east_asian_width(char) in ('F', 'W', 'A') else 1
+        char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
         width += char_width
     return width
 
 def get_terminal_width():
     try:
         # 获取终端尺寸并返回列数（宽度）
-        return os.get_terminal_size().columns - 10
+        return os.get_terminal_size().columns - 4
     except OSError:
         # 当输出被重定向到文件时可能失败，返回默认值80
         return 120
-    
 
-def adjust_column_widths(all_width, col_width_arr):
-    n = len(col_width_arr)
-    min_total = 10 * n
+import math
+
+def calculate_column_widths(all_width, needed_widths, min_width=5):
+    """
+    计算二维表格各列的最佳显示宽度，确保总宽度充分利用
     
-    # 检查最小宽度是否超过总宽度
+    参数:
+    all_width (int): 屏幕总宽度
+    needed_widths (list of list of int): 二维列表，表示每个单元格完整显示需要的宽度
+    min_width (int): 每列的最小宽度限制，默认为5
+    
+    返回:
+    list: 每列的最佳宽度分配方案
+    
+    异常:
+    ValueError: 当所有列都采用最小宽度时仍超出屏幕总宽度
+    """
+    # 处理空表情况
+    if not needed_widths or not needed_widths[0]:
+        return []
+    
+    n_cols = len(needed_widths[0])
+    n_rows = len(needed_widths)
+    
+    # 1. 计算每列的基础需求
+    max_widths = []  # 每列的最大需求
+    avg_widths = []  # 每列的平均需求
+    
+    for col_idx in range(n_cols):
+        col_values = [row[col_idx] for row in needed_widths]
+        col_max = max(col_values)
+        col_avg = sum(col_values) / n_rows
+        max_widths.append(max(col_max, min_width))
+        avg_widths.append(max(col_avg, min_width))
+
+    # 3. 如果理想宽度总和不超过总宽度，直接返回理想宽度
+    ideal_total = sum(max_widths)
+    if ideal_total <= all_width:
+        return max_widths
+    
+    # 2. 计算每列的加权需求（结合最大和平均需求）
+    # 权重因子：最大值占70%，平均值占30%
+    weighted_needs = [
+        0.7 * max_widths[i] + 0.3 * avg_widths[i] 
+        for i in range(n_cols)
+    ]
+    
+    # 3. 检查最小宽度可行性
+    min_total = n_cols * min_width
     if min_total > all_width:
-        raise ValueError(f"每个字段最小宽度为10时，总宽度需求{min_total}已超过总宽度{all_width}")
+        raise ValueError(f"即使所有列都使用最小宽度({min_width})，总宽度({min_total})仍超过屏幕宽度({all_width})")
     
-    # 如果当前总和已经等于目标宽度，直接返回
-    if sum(col_width_arr) == all_width:
-        return col_width_arr
+    # 4. 如果加权需求总和≤总宽度，按比例分配整数宽度
+    weighted_total = sum(weighted_needs)
+    if weighted_total <= all_width:
+        # 先按比例分配整数部分
+        base_widths = [int(weighted_needs[i] * all_width / weighted_total) for i in range(n_cols)]
+        allocated = sum(base_widths)
+        
+        # 处理分配不足的情况
+        remaining = all_width - allocated
+        if remaining > 0:
+            # 按需求缺口降序排序
+            deficit_indices = sorted(
+                range(n_cols),
+                key=lambda i: weighted_needs[i] - base_widths[i],
+                reverse=True
+            )
+            # 将剩余宽度分配给需求缺口最大的列
+            for i in range(remaining):
+                idx = deficit_indices[i % n_cols]
+                base_widths[idx] += 1
+        return base_widths
     
-    # 初始化结果数组（确保每个字段至少为10）
-    result = [max(10, width) for width in col_width_arr]
-    current_total = sum(result)
+    # 5. 压缩分配：在保证最小宽度的基础上按需分配
+    # 初始化每列为最小宽度
+    final_widths = [min_width] * n_cols
+    remaining = all_width - min_total
     
-    # 如果已经超过总宽度，需要缩减
-    if current_total > all_width:
-        # 计算需要缩减的总量
-        reduction_needed = current_total - all_width
-        # 计算可缩减的字段（当前宽度>10的字段）
-        reducible_cols = [i for i, width in enumerate(result) if width > 10]
-        reducible_weights = [result[i] - 10 for i in reducible_cols]
-        total_reducible_weight = sum(reducible_weights)
-        
-        # 如果没有可缩减的字段，但总宽度还是超，抛异常（理论上不会发生）
-        if not reducible_cols:
-            raise ValueError("无法缩减到目标宽度（所有字段均为最小宽度10）")
-        
-        # 按可缩减权重比例分配缩减量
-        for i, idx in enumerate(reducible_cols):
-            reduction_share = int(round(reduction_needed * reducible_weights[i] / total_reducible_weight))
-            # 确保缩减后不小于10
-            result[idx] = max(10, result[idx] - reduction_share)
-        
-        # 处理整数舍入误差
-        current_total = sum(result)
-        adjustment = current_total - all_width
-        if adjustment > 0:
-            # 从可缩减字段中按权重顺序缩减
-            for idx in sorted(reducible_cols, key=lambda i: result[i] - 10, reverse=True):
-                if result[idx] > 10 and adjustment > 0:
-                    result[idx] -= 1
-                    adjustment -= 1
-                    if adjustment == 0:
-                        break
+    # 计算每列的实际额外需求（不超过最大需求）
+    extra_needs = [
+        min(max_widths[i] - min_width, weighted_needs[i] - min_width)
+        for i in range(n_cols)
+    ]
+    total_extra_needed = sum(extra_needs)
     
-    # 如果当前总和小于目标宽度，需要增加
-    elif current_total < all_width:
-        # 计算需要增加的总量
-        addition_needed = all_width - current_total
-        # 计算权重总和（原始权重）
-        total_weight = sum(col_width_arr)
+    # 如果还有额外需求空间
+    if total_extra_needed > 0:
+        # 按比例分配额外空间（浮点数）
+        extra_alloc_float = [
+            remaining * (need / total_extra_needed)
+            for need in extra_needs
+        ]
         
-        # 按原始权重比例分配增量
-        additions = []
-        for weight in col_width_arr:
-            share = addition_needed * weight / total_weight
-            additions.append(share)
+        # 分配整数部分
+        extra_alloc_int = [math.floor(a) for a in extra_alloc_float]
+        for i in range(n_cols):
+            final_widths[i] += int(extra_alloc_int[i])
         
-        # 整数分配处理
-        int_additions = [int(share) for share in additions]
-        remainder = addition_needed - sum(int_additions)
-        # 处理小数部分（按小数大小降序分配）
-        decimals = [additions[i] - int_additions[i] for i in range(n)]
-        for i in sorted(range(n), key=lambda i: decimals[i], reverse=True)[:int(remainder)]:
-            int_additions[i] += 1
+        # 处理剩余空间（因取整产生）
+        allocated = sum(final_widths)
+        remaining_space = all_width - allocated
         
-        # 应用增量
-        result = [result[i] + int_additions[i] for i in range(n)]
+        if remaining_space > 0:
+            # 计算每列的需求满足度（当前宽度 / 加权需求）
+            satisfaction = [
+                final_widths[i] / weighted_needs[i] if weighted_needs[i] > 0 else 1
+                for i in range(n_cols)
+            ]
+            
+            # 优先分配给满足度最低的列
+            unsatisfied_indices = sorted(
+                range(n_cols),
+                key=lambda i: satisfaction[i]
+            )
+            
+            # 分配剩余空间（每列最多增加1单位）
+            for idx in unsatisfied_indices:
+                if remaining_space <= 0:
+                    break
+                # 确保不超过实际最大需求
+                if final_widths[idx] < max_widths[idx]:
+                    final_widths[idx] += 1
+                    remaining_space -= 1
     
-    return result
+    return final_widths
 
 def pad_to_width(text, width):
     """填充文本到指定显示宽度（考虑宽窄字符）"""
@@ -120,13 +174,14 @@ def read_xlsx(file_path, num=10,cols=[]):
         sheet = workbook.active
 
         print_data = []
+        print_data_width = []
         if len(cols) == 0:
             # header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
             cols = [col_idx+1 for col_idx in range(sheet.max_column)]
         
         col_display_widths_max = [0] * len(cols)
-        col_display_widths_all = [{"count":0,"sum":0} for _ in range(len(cols))] 
-        col_display_widths_avg = [0] * len(cols)
+        # col_display_widths_all = [{"count":0,"sum":0} for _ in range(len(cols))] 
+        # col_display_widths_avg = [0] * len(cols)
 
         max_row = sheet.max_row
         printrowindexs = list(range(2, max_row + 1))
@@ -140,35 +195,33 @@ def read_xlsx(file_path, num=10,cols=[]):
             if row_idx not in printrowindexs:
                 continue
             print_data_line = []
+            print_data_width_line = []
             for idx, col_idx in enumerate(cols):
                 cell_data = row[col_idx-1]
                 if cell_data is None:
                     cell_data = ""
                 cell_data = str(cell_data).strip()
-                width = get_display_width(cell_data)
+                if cell_data == "":
+                    cell_data = str(row_idx)
+                width = get_display_width(cell_data)+1
                 if width > col_display_widths_max[idx]:
                     col_display_widths_max[idx] = width
-                if row_idx != 1 and cell_data != "":
-                    col_display_widths_all[idx]["count"] += 1
-                    col_display_widths_all[idx]["sum"] += width
+                # if row_idx != 1 and cell_data != "":
+                #     col_display_widths_all[idx]["count"] += 1
+                #     col_display_widths_all[idx]["sum"] += width
                 print_data_line.append(cell_data)
+                print_data_width_line.append(width)
             print_data.append(print_data_line)
+            print_data_width.append(print_data_width_line)
 
-        charlen = (len(cols)-1)*2+2
-        col_display_widths_print = []
-        if sum(col_display_widths_max) + charlen <= terminal_width:
-            col_display_widths_print = adjust_column_widths(terminal_width-charlen,col_display_widths_max)
-        else:
-            for idx in range(len(cols)):
-                if col_display_widths_all[idx]["count"] > 0:
-                    col_display_widths_avg[idx] = col_display_widths_all[idx]["sum"] // col_display_widths_all[idx]["count"]
-                else:
-                    col_display_widths_avg[idx] = 0
-            
-            col_display_widths_print = adjust_column_widths(terminal_width-charlen,col_display_widths_avg)
-            
+        spitcharlen = (len(cols)-1)*2+2
+
+        col_display_widths_print = calculate_column_widths(terminal_width-spitcharlen,print_data_width,5)
+        # print(col_display_widths_max)
         # print(col_display_widths_print)
-        separator = "-" * terminal_width
+        # print(terminal_width-spitcharlen)
+        # print(sum(col_display_widths_print))
+        separator = "-" * (sum(col_display_widths_print)+spitcharlen+1)
         for idx, print_data_line in enumerate(print_data):
             if idx == 0:
                 print(separator)
