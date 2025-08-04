@@ -69,7 +69,7 @@ def calculate_column_widths(all_width, needed_widths, min_width=5):
     # 2. 计算每列的加权需求（结合最大和平均需求）
     # 权重因子：最大值占70%，平均值占30%
     weighted_needs = [
-        0.7 * max_widths[i] + 0.3 * avg_widths[i] 
+        0.6 * max_widths[i] + 0.4 * avg_widths[i] 
         for i in range(n_cols)
     ]
     
@@ -82,7 +82,7 @@ def calculate_column_widths(all_width, needed_widths, min_width=5):
     weighted_total = sum(weighted_needs)
     if weighted_total <= all_width:
         # 先按比例分配整数部分
-        base_widths = [int(weighted_needs[i] * all_width / weighted_total) for i in range(n_cols)]
+        base_widths = [min(int(weighted_needs[i] * all_width / weighted_total),max_widths[i]) for i in range(n_cols)]
         allocated = sum(base_widths)
         
         # 处理分配不足的情况
@@ -94,10 +94,18 @@ def calculate_column_widths(all_width, needed_widths, min_width=5):
                 key=lambda i: weighted_needs[i] - base_widths[i],
                 reverse=True
             )
+
+            deficit_indices = list(filter(lambda i: max_widths[i]-base_widths[i] > 0, deficit_indices))
+            
             # 将剩余宽度分配给需求缺口最大的列
             for i in range(remaining):
-                idx = deficit_indices[i % n_cols]
+                if len(deficit_indices) == 0:
+                    break
+                idx = deficit_indices[i % len(deficit_indices)]
+                
                 base_widths[idx] += 1
+                if base_widths[idx] >= max_widths[idx]:
+                    deficit_indices.remove(idx)
         return base_widths
     
     # 5. 压缩分配：在保证最小宽度的基础上按需分配
@@ -167,7 +175,62 @@ def pad_to_width(text, width):
     padding = width - current_width
     return text + ' ' * padding
 
-def read_xlsx(file_path, num=10,cols=[]):
+def countlength(needed_widths,col_index,target_len):
+    col_values = [row[col_index] for row in needed_widths]
+    t = 0
+    for val in col_values:
+        if val > target_len:
+            t += (val-target_len)
+    return t
+
+
+def calculate_column_widths_new(all_width, needed_widths, min_width=5):
+    if not needed_widths or not needed_widths[0]:
+        return []
+    
+    n_cols = len(needed_widths[0])
+    max_widths = []
+    final_widths = []
+    for col_idx in range(n_cols):
+        col_values = [row[col_idx] for row in needed_widths]
+        col_max = max(col_values)
+        max_widths.append(max(col_max, min_width))
+        final_widths.append(max(col_max, min_width))
+    
+    max_width = sum(max_widths)
+    if all_width >= max_width:
+        return max_widths
+    
+    min_total = n_cols * min_width
+    if min_total > all_width:
+        raise ValueError(f"即使所有列都使用最小宽度({min_width})，总宽度({min_total})仍超过屏幕宽度({all_width})")
+    
+    aa = max_width-all_width
+    for i in range(aa):
+        lens = [countlength(needed_widths,col_idx,final_widths[col_idx]-1) for col_idx in range(n_cols)]
+        
+        index = 0
+        minlen = 99999
+        for idx,length in enumerate(lens):
+
+            if length<minlen:
+                index = idx
+                minlen = length
+            elif length == minlen:
+                if max_widths[idx] > max_widths[index]:
+                    index = idx
+                
+        
+        # print(index,minlen)
+        final_widths[index] -= 1
+        for row in needed_widths:
+            if row[index]>final_widths[index]:
+               row[index] -= 1
+
+    
+    return final_widths
+
+def read_xlsx(file_path, cols=[], start:int=0, limit:int=10):
     try:
         terminal_width = get_terminal_width()
         workbook = openpyxl.load_workbook(file_path, data_only=True)
@@ -176,20 +239,23 @@ def read_xlsx(file_path, num=10,cols=[]):
         print_data = []
         print_data_width = []
         if len(cols) == 0:
-            # header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
             cols = [col_idx+1 for col_idx in range(sheet.max_column)]
         
         col_display_widths_max = [0] * len(cols)
-        # col_display_widths_all = [{"count":0,"sum":0} for _ in range(len(cols))] 
-        # col_display_widths_avg = [0] * len(cols)
 
         max_row = sheet.max_row
         printrowindexs = list(range(2, max_row + 1))
-        if num < max_row:
-            printrowindexs = random.sample(printrowindexs, num)
+        if limit < max_row:
+            if start < 0:
+                printrowindexs = random.sample(printrowindexs, limit)
+            else:
+                if len(printrowindexs) < start+limit:
+                    printrowindexs = printrowindexs[:limit]
+                else:
+                    printrowindexs = printrowindexs[start:start+limit]
 
-        printrowindexs.append(1)
-        
+        if len(cols) != 1:
+            printrowindexs.append(1)
         
         for row_idx,row in enumerate(sheet.iter_rows(min_row=1, values_only=True),start=1):
             if row_idx not in printrowindexs:
@@ -206,33 +272,36 @@ def read_xlsx(file_path, num=10,cols=[]):
                 width = get_display_width(cell_data)+1
                 if width > col_display_widths_max[idx]:
                     col_display_widths_max[idx] = width
-                # if row_idx != 1 and cell_data != "":
-                #     col_display_widths_all[idx]["count"] += 1
-                #     col_display_widths_all[idx]["sum"] += width
                 print_data_line.append(cell_data)
                 print_data_width_line.append(width)
             print_data.append(print_data_line)
-            print_data_width.append(print_data_width_line)
+            if row_idx!=1:
+                print_data_width.append(print_data_width_line)
 
         spitcharlen = (len(cols)-1)*2+2
-
-        col_display_widths_print = calculate_column_widths(terminal_width-spitcharlen,print_data_width,5)
+        for a in print_data_width:
+            print(a)
+        col_display_widths_print = calculate_column_widths_new(terminal_width-spitcharlen,print_data_width,5)
         # print(col_display_widths_max)
         # print(col_display_widths_print)
-        # print(terminal_width-spitcharlen)
-        # print(sum(col_display_widths_print))
         separator = "-" * (sum(col_display_widths_print)+spitcharlen+1)
         for idx, print_data_line in enumerate(print_data):
-            if idx == 0:
+            if idx == 0 and len(cols)!=1:
                 print(separator)
                 header = "| ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
                 print("| "+header+"|")
                 print(separator)
             else:
-                line = "| ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
-                print("| "+line+"|")
-        print(separator)
-        print(f"总计{max_row-1} 行，显示 {len(print_data)-1} 行 ")
+                if len(cols)!=1:
+                    line = "| ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
+                    print("| "+line+"|")
+                    pass
+                else:
+                    print(pad_to_width(print_data_line[0],col_display_widths_print[0]))
+        
+        if len(cols) != 1:
+            print(separator)
+            print(f"总计{max_row-1} 行，显示 {len(print_data)-1} 行 ")
 
     except FileNotFoundError:
         print(f"错误: 文件 '{file_path}' 未找到")
@@ -245,21 +314,41 @@ def read_xlsx(file_path, num=10,cols=[]):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("用法: python read_xlsx.py <文件路径> <数量>")
-        print("示例: python read_xlsx.py data.xlsx 10")
+        print("用法: python read_xlsx.py <文件路径> <字段> <分页>")
+        print("示例: python read_xlsx.py data.xlsx 1,2,4,5,6 0,10|random,10")
         sys.exit(1)
     
     # mode = sys.argv[1]
     file_path = sys.argv[1]
-    num = sys.argv[2]
-    if num.isdigit(): 
-        num = int(num)
+    colnames = sys.argv[2]
+    
+
+    cols = []
+    cols = colnames.split(",")
+    cols = [int(c) for c in cols if c.isdigit()]
+
+    numstr = sys.argv[3]
+    _numstr = numstr.split(",")
+
+    
+    start = 0
+    if "random" == _numstr[0]:
+        start=-1
+    elif _numstr[0].isdigit():
+        start=int(_numstr[0])
+        pass
     else:
-        print("数量参数必须是一个整数")
+        print("参数错误")
+        sys.exit(1)
+        pass
+
+    if len(_numstr) !=2 or not _numstr[1].isdigit(): 
+        print("参数错误")
         sys.exit(1)
 
-    col = []
-    if len(sys.argv) > 3:
-        col = sys.argv[3:]
-        col = [int(c) for c in col if c.isdigit()]
-    read_xlsx(file_path,num,col)
+    count = int(_numstr[1])
+    read_xlsx(file_path,cols,start,count)
+
+
+
+    
