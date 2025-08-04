@@ -14,7 +14,7 @@ def get_display_width(text):
     
     for char in str(text):
         # char_width = 2 if char not in chararr and unicodedata.east_asian_width(char) in ('F', 'W', 'A') else 1
-        char_width = 2 if unicodedata.east_asian_width(char) in ('F', 'W') else 1
+        char_width = 2 if is_wide_character(char) else 1
         width += char_width
     return width
 
@@ -161,18 +161,49 @@ def get_terminal_width():
     
 #     return final_widths
 
-def pad_to_width(text, width):
-    """填充文本到指定显示宽度（考虑宽窄字符）"""
-    while True:
-        current_width = get_display_width(text)
-        if current_width > width:
-            text = text[:len(text)-2] + "…"
-        else:
-            break
+def is_wide_character(char):
+    return unicodedata.east_asian_width(char) in ('F', 'W')
+
+# def pad_to_width(text, width):
+#     """填充文本到指定显示宽度（考虑宽窄字符）"""
+#     while True:
+#         current_width = get_display_width(text)
+#         if current_width > width:
+#             text = text[:len(text)-2] + "…"
+#         else:
+#             break
     
-    # 计算需要添加的空格数量
-    padding = width - current_width
-    return text + ' ' * padding
+#     # 计算需要添加的空格数量
+#     padding = width - current_width
+#     return text + ' ' * padding
+
+def pad_to_width_optimized(text, width):
+    text = str(text)
+    ellipsis = '…'
+    ellipsis_width = get_display_width(ellipsis)
+    
+    current_width = 0
+    char_list = []
+    for char in text:
+        char_width = 2 if is_wide_character(char) else 1
+        if current_width + char_width > width:
+            break
+        current_width += char_width
+        char_list.append(char)
+    
+    if len(char_list) != len(text):
+        if current_width == width:
+            c = char_list[-1]
+            char_list = char_list[:-1]
+            if is_wide_character(c):
+                char_list.append(' ')
+
+    result = ''.join(char_list)
+    if result != text:
+        result += ellipsis
+        current_width += ellipsis_width
+    
+    return result + ' ' * (width - current_width)
 
 def countlength(needed_widths,col_index,target_len):
     col_values = [row[col_index] for row in needed_widths]
@@ -280,15 +311,15 @@ def read_xlsx(file_path, cols=[], start:int=0, limit:int=10):
         for idx, print_data_line in enumerate(print_data):
             if idx == 0 and len(cols)!=1:
                 print(separator)
-                header = " | ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
+                header = " | ".join(pad_to_width_optimized(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
                 print("| "+header+" |")
                 print(separator)
             else:
                 if len(cols)!=1:
-                    line = " | ".join(pad_to_width(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
+                    line = " | ".join(pad_to_width_optimized(print_data_line[i],col_display_widths_print[i]) for i in range(len(cols)))
                     print("| "+line+" |")
                 else:
-                    print(pad_to_width(print_data_line[0],col_display_widths_print[0]))
+                    print(pad_to_width_optimized(print_data_line[0],col_display_widths_print[0]))
         
         if len(cols) != 1:
             print(separator)
