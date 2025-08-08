@@ -84,8 +84,8 @@ def cover_json_data(movie_info):
 
     movie_info["number"] = movie_info["number"].upper()
     movie_info["release"] = movie_info["release"].replace('/', '-') if 'release' in movie_info else ''
-    movie_info["title"] = movie_info["title"].replace(movie_info["actor"].replace(","," "),"").strip()
     movie_info["original_title"] = special_characters_replacement(movie_info["title"]) if 'title' in movie_info else ''
+    movie_info["title"] = movie_info["title"].replace(movie_info["actor"].replace(","," "),"").strip()
     
     if config.getBoolValue("translate.switch"):
         try:

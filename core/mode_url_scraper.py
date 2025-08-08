@@ -20,6 +20,7 @@ import openpyxl
 columns  = ["number","title","original_title","actor","userrating","uservotes","release","magnet_link","magnet_meta","magnet_tags",]
 title    = ["番号",  "标题",  "原标题",        "演员", "评分",      "人数",      "发布日期","磁力",       "内容",        "标签"]
 downloaded_numbers = []
+catched_numbers = []
 numberindex = {}
 
 exit_now = False
@@ -29,7 +30,7 @@ def SIGINT_callback():
     logger.info(f"SIGINT_callback: exit_now={exit_now}")
     
 #https://javdb459.com/users/want_watch_videos
-def run(arr:list, with_cover:bool):
+def run(arr:list):
     register_event("SIGINT", callback=SIGINT_callback)
     url = arr[0]
     xlsxfile = arr[1] if len(arr) > 1 else "scrapingurl.xlsx"
@@ -60,13 +61,9 @@ def run(arr:list, with_cover:bool):
                     if number in downloaded_numbers or number == '':
                         rows_to_delete.append(row_idx)
                     else:
-                        downloaded_numbers.append(number)
+                        catched_numbers.append(number)
                         numberindex[number] = row_idx
                 break
-        if len(rows_to_delete) > 0:
-            logger.info(f"delete {len(rows_to_delete)} rows in xlsx file.")
-            for row_idx in sorted(rows_to_delete, reverse=True):
-                sheet.delete_rows(row_idx)
     else:
         logger.info(f"file [{xlsxfile}] not exists, create new file... ")
         workbook = openpyxl.Workbook()
@@ -74,46 +71,56 @@ def run(arr:list, with_cover:bool):
         sheet.title = "Data"  
         sheet.append(title)
     
-    img_dir = None
-    if with_cover:
-        img_dir = xlsxfile + "_cover"
-        functions.create_folder(img_dir)
-        logger.info(f"scraping data from [{url}] save to [{xlsxfile}] img download to [{img_dir}]")
+    # img_dir = None
+    # if with_cover:
+    #     img_dir = xlsxfile + "_cover"
+    #     functions.create_folder(img_dir)
+    #     logger.info(f"scraping data from [{url}] save to [{xlsxfile}] img download to [{img_dir}]")
 
-    javdb(url, sheet, img_dir)
+    javdb(url, sheet)
+
+    if len(rows_to_delete) > 0:
+        logger.info(f"delete {len(rows_to_delete)} rows in xlsx file.")
+        for row_idx in sorted(rows_to_delete, reverse=True):
+            sheet.delete_rows(row_idx)
     workbook.save(xlsxfile)
 
 #url中存在page参数时只拉取本页数据，不含page参数时则自动翻页拉取全部数据
-def javdb(url:str, sheet:openpyxl.worksheet.worksheet.Worksheet, img_dir:str) : 
+def javdb(url:str, sheet:openpyxl.worksheet.worksheet.Worksheet) : 
     session = httprequest.request_session(cookies=Javdb.get_cookies())
     try:
         getOtherPage = 'page=' not in url
+        _url = url
         pageAt = 1
         while True:
             if exit_now:
                 break    
+            if getOtherPage and pageAt != 1:
+                url = _url + ('&' if "?" in _url else '?') + 'page=' + str(pageAt)
+
             resp = session.get(url)
             tree = etree.fromstring(resp.text, etree.HTMLParser()) 
             sleep()
             datalen = 0
             if 'want_watch_videos' in url:
-                datalen = want_watch_videos(resp.url, tree, img_dir, pageAt, sheet, session)
+                datalen = want_watch_videos(resp.url, tree, sheet, session)
             else:
-                datalen = other(resp.url, tree, img_dir, pageAt, sheet, session)
+                datalen = other(resp.url, tree, sheet, session)
                 
             if not getOtherPage or datalen < 20:
                 break
             pageAt += 1
-            url = url + ('&' if "?" in url else '?') + 'page=' + str(pageAt)
-            
     except Exception as e:
         logger.error(f"url scraper error. {e}")
         logger.error(f"{traceback.format_exc()}")
 
-def want_watch_videos(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int, sheet:openpyxl.worksheet.worksheet.Worksheet, session):
+def want_watch_videos(baseurl:str, tree:etree._Element, sheet:openpyxl.worksheet.worksheet.Worksheet, session):
     tag_a = tree.xpath('//*[contains(@class,"movie-list")]/div/div/a')
     datalen = len(tag_a)
-    logger.info(f"get {datalen} urls in page {pageAt}")
+    logger.info(f"get {datalen} urls in page {baseurl}")
+    if datalen == 0:
+        logger.info(etree.tostring(tree, encoding='unicode',pretty_print=True))
+
 
     for a in tag_a:
         if exit_now:
@@ -126,21 +133,28 @@ def want_watch_videos(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int,
             if number == '':
                 logger.error(f"no number in {etree.tostring(a, encoding='unicode',pretty_print=True)}")
                 continue
-            if number in downloaded_numbers:
+            if number in downloaded_numbers or number in catched_numbers:
                 logger.info(f"{number} already downloaded or in xlsx, skip.")
+                # if number in catched_numbers:
+                    #增量模式，出现重复数据代表增量结束。
+                    # break 
                 #-----为标题栏为空的数据补充翻译。因为有时候翻译质量不高，可以手动清空格子，这样下次运行时会重新翻译。
                 tag_title = a.find('div[@class="video-title"]') 
                 text_nodes = tag_title.xpath('text()')
                 original_title = ''.join(text_nodes).strip()
                 if number in numberindex:
+                    nnn = sheet.cell(row=numberindex[number], column=1).value
                     title = sheet.cell(row=numberindex[number], column=2).value
+                    otitle = sheet.cell(row=numberindex[number], column=3).value
                     if title is None:
                         title = ""
-                    if title.strip() == "":
+                    if otitle is None:
+                        otitle = ""
+                    if title.strip() == "" or otitle != original_title:
                         sheet.cell(row=numberindex[number], column=3).value = original_title
                         zh = translate.translate_text(original_title)
                         sheet.cell(row=numberindex[number], column=2).value = zh
-                        logger.info(f"{number} -- {zh}")
+                        logger.info(f"{numberindex[number]} -- {number} -- {nnn} -- {original_title} -- {otitle} -- {zh}")
                 #-----------------------------------------------------------------------------------
                 continue
 
@@ -152,7 +166,7 @@ def want_watch_videos(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int,
         detail_url = urljoin(baseurl, detail_url)
         data = get_data(detail_url,Javdb(session))
         logger.info(f"{data['number']} loaded.")
-        down_img(img_dir, data)
+        # down_img(img_dir, data)
         wdata = cover_wdata(data)
         sheet.append(wdata)
         sleep()
@@ -165,13 +179,13 @@ def test():
     wdata = cover_wdata(data)
 
 
-def other(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int, sheet:openpyxl.worksheet.worksheet.Worksheet, session):
+def other(baseurl:str, tree:etree._Element, sheet:openpyxl.worksheet.worksheet.Worksheet, session):
 
     detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
     if len(detail_urls) == 0 :
         detail_urls = tree.xpath('//*[contains(@class,"movie-list")]/div/div/a/@href')
     datalen = len(detail_urls)
-    logger.info(f"get {datalen} urls in page {pageAt}")
+    logger.info(f"get {datalen} urls in page {baseurl}")
 
     for detail_url in detail_urls:
         if exit_now:
@@ -183,7 +197,7 @@ def other(baseurl:str, tree:etree._Element, img_dir:str, pageAt:int, sheet:openp
         if data['number'] in downloaded_numbers:
             continue
         
-        down_img(img_dir, data)
+        # down_img(img_dir, data)
         wdata = cover_wdata(data)
         sheet.append(wdata)
         sleep()
@@ -198,12 +212,12 @@ def get_data(detail_url:str,parser=None):
         return None
     return cover_json_data(json.loads(json_data))
 
-def down_img(img_dir:str,data:dict):
-    try:
-        if img_dir is not None:
-            httprequest.download(data['cover'],os.path.join(img_dir, data['number'] + functions.image_ext(data['cover'])))
-    except Exception as e:
-        logger.error("download img error. "+data['cover'])
+# def down_img(img_dir:str,data:dict):
+#     try:
+#         if img_dir is not None:
+#             httprequest.download(data['cover'],os.path.join(img_dir, data['number'] + functions.image_ext(data['cover'])))
+#     except Exception as e:
+#         logger.error("download img error. "+data['cover'])
 
 def cover_wdata(data:dict):
     best = getBestMagnet(data["magnets"])
