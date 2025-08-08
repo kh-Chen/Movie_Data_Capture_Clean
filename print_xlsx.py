@@ -127,7 +127,7 @@ def print_data(n_cols:int, print_data_widths:slice, while_print_data:slice, max_
     terminal_width = get_terminal_width()
     spitcharlen = (n_cols-1)*3+3
 
-    col_display_widths_print = calculate_column_widths_new(terminal_width-spitcharlen,print_data_widths,10)
+    col_display_widths_print = calculate_column_widths_new(terminal_width-spitcharlen,print_data_widths)
     
     separator = "-" * (sum(col_display_widths_print)+spitcharlen+1)
     for idx, print_data_line in enumerate(while_print_data):
@@ -165,7 +165,12 @@ def read_xlsx(file_path, cols=[], start=0, limit=20, use_random=False, search_st
         for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1):
             data_line = []
             for col_idx in cols:
-                cell_data = row[col_idx-1]
+                if col_idx == 0:  # 行号列
+                    cell_data = str(row_idx)  # 直接使用行号
+                    if row_idx == 1:  # 标题行
+                        cell_data = "#"
+                else:
+                    cell_data = row[col_idx-1]
                 if cell_data is None:
                     cell_data = ""
                 cell_data = str(cell_data).strip()
