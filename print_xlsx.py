@@ -65,7 +65,10 @@ def countlength(needed_widths,col_index,target_len):
 
 
 def calculate_column_widths_new(all_width, needed_widths, min_width=5):
-    if not needed_widths or not needed_widths[0]:
+    if not needed_widths:
+        return []
+    
+    if not needed_widths[0]:
         return []
     
     n_cols = len(needed_widths[0])
@@ -146,9 +149,8 @@ def print_data(n_cols:int, print_data_widths:slice, while_print_data:slice, max_
 
 
 
-def read_xlsx(file_path, cols=[], start:int=0, limit:int=10):
+def read_xlsx(file_path, cols=[], start=0, limit=20, use_random=False, search_str=None, search_cols=None):
     try:
-        
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         sheet = workbook.active
         max_row = sheet.max_row
@@ -158,31 +160,76 @@ def read_xlsx(file_path, cols=[], start:int=0, limit:int=10):
         
         n_cols = len(cols)
         
-        printrowindexs = get_row_idx(max_row,start,limit)
-
-        while_print_data = []
-        print_data_widths = []
-        for row_idx,row in enumerate(sheet.iter_rows(min_row=1, values_only=True),start=1):
-            if row_idx not in printrowindexs and (row_idx != 1 or n_cols == 1):
-                continue
-            print_data_line = []
-            print_data_width_line = []
-            for idx, col_idx in enumerate(cols):
+        # 读取所有数据
+        all_data = []
+        for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1):
+            data_line = []
+            for col_idx in cols:
                 cell_data = row[col_idx-1]
                 if cell_data is None:
                     cell_data = ""
                 cell_data = str(cell_data).strip()
-                if cell_data == "":
+                if cell_data == "" and row_idx != 1:  # 非标题行空值显示行号
                     cell_data = str(row_idx)
-
-                print_data_line.append(cell_data)
-                print_data_width_line.append(get_display_width(cell_data))
+                data_line.append(cell_data)
+            all_data.append(data_line)
+        
+        # 应用检索过滤（标题行保留）
+        header = all_data[0]
+        content = all_data[1:]
+        
+        if search_str:
+            # 处理检索列参数：将原始列索引转换为数据列索引
+            actual_search_cols = None
+            if search_cols:
+                # 将原始列索引映射到数据列中的位置
+                actual_search_cols = []
+                for col in search_cols:
+                    if col in cols:
+                        actual_search_cols.append(cols.index(col) + 1)
+            
+            content = filter_data(content, search_str, actual_search_cols)
+            print(f"检索匹配: {len(content)} 行")
+        
+        # 处理分页
+        total_rows = len(content)
+        start = max(0, min(start, total_rows))  # 确保start在有效范围内
+        
+        if use_random:  # 随机抽样
+            # 从起始行开始随机采样
+            remaining = content[start:]
+            if limit == -1:  # 输出全部
+                content = remaining
+            else:
+                if len(remaining) > limit:
+                    content = random.sample(remaining, limit)
+                else:
+                    content = remaining
+        else:
+            if limit == -1:  # 输出全部
+                content = content[start:]
+            else:
+                end_idx = start + limit
+                content = content[start:end_idx]
+        
+        # 准备打印数据
+        while_print_data = [header]
+        print_data_widths = []
+        for data_line in content:
+            print_data_line = []
+            print_data_width_line = []
+            for cell_value in data_line:
+                print_data_line.append(cell_value)
+                print_data_width_line.append(get_display_width(cell_value))
             while_print_data.append(print_data_line)
-            if row_idx!=1:
-                print_data_widths.append(print_data_width_line)
-
-        print_data(n_cols,print_data_widths,while_print_data,max_row)
-
+            print_data_widths.append(print_data_width_line)
+        
+        # 显示结果（当有数据或标题时显示）
+        if content:
+            print_data(n_cols, print_data_widths, while_print_data, max_row)
+        else:
+            print("没有数据可显示")
+        
     except FileNotFoundError:
         print(f"错误: 文件 '{file_path}' 未找到")
         sys.exit(1)
@@ -192,42 +239,65 @@ def read_xlsx(file_path, cols=[], start:int=0, limit:int=10):
         sys.exit(1)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("用法: python read_xlsx.py <文件路径> <字段> <分页>")
-        print("示例: python read_xlsx.py data.xlsx 1,2,4,5,6 0,10|random,10")
-        sys.exit(1)
+import argparse
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='读取并显示Excel文件内容')
+    parser.add_argument('file_path', help='Excel文件路径')
+    parser.add_argument('columns', nargs='?', default='', help='要显示的列索引（逗号分隔，如:1,2,3)，可选，默认为全部列')
+    parser.add_argument('--start', type=int, default=0, help='起始行号，默认为0')
+    parser.add_argument('--limit', default='20', help='输出行数，默认为20，可设为"all"输出全部数据')
+    parser.add_argument('--random', action='store_true', help='启用随机采样')
+    parser.add_argument('--search', help='关键字检索内容（可选）')
+    parser.add_argument('--search-columns', help='检索列索引（逗号分隔，可选，默认所有列）')
+    return parser.parse_args()
+
+def filter_data(data, search_str, search_cols=None):
+    """根据检索条件过滤数据"""
+    if not search_str:
+        return data
     
-    file_path = sys.argv[1]
-    colnames = sys.argv[2]
+    search_str = search_str.lower()
+    filtered = []
+    for row in data:
+        for col_idx, cell_value in enumerate(row):
+            # 如果指定了检索列，只检查这些列
+            if search_cols and (col_idx + 1) not in search_cols:
+                continue
+                
+            # 不区分大小写的模糊匹配
+            if search_str in str(cell_value).lower():
+                filtered.append(row)
+                break
+    return filtered
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    
+    file_path = args.file_path
+    colnames = args.columns
     
     cols = []
-    cols = colnames.split(",")
-    cols = [int(c) for c in cols if c.isdigit()]
-
-    numstr = sys.argv[3]
-    _numstr = numstr.split(",")
-
+    if colnames:  # 如果提供了列参数
+        cols = [int(c) for c in colnames.split(",") if c.isdigit()]
     
-    start = 0
-    if "random" == _numstr[0]:
-        start=-1
-    elif _numstr[0].isdigit():
-        start=int(_numstr[0])
-        pass
+    # 处理limit参数
+    limit = args.limit
+    if limit.lower() == 'all':
+        limit = -1  # 使用-1表示输出全部
     else:
-        print("参数错误")
-        sys.exit(1)
-        pass
-
-    if len(_numstr) !=2 or not _numstr[1].isdigit(): 
-        print("参数错误")
-        sys.exit(1)
-
-    count = int(_numstr[1])
-
-    read_xlsx(file_path,cols,start,count)
-
+        try:
+            limit = int(limit)
+        except ValueError:
+            print("错误：limit参数必须是整数或'all'")
+            sys.exit(1)
+    
+    # 处理检索列参数
+    search_cols = None
+    if args.search_columns:
+        search_cols = [int(c) for c in args.search_columns.split(",") if c.isdigit()]
+    
+    read_xlsx(file_path, cols, args.start, limit, args.random, args.search, search_cols)
 
 
     
