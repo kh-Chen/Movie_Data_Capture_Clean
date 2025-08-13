@@ -64,14 +64,9 @@ def run():
 
     # 测试，session保活
     if len(movies_dir_keep) == 0 and len(movies_dir_delete_4) == 0 and len(movies_dir_delete_5) == 0:
-        re = db.session.get(f"{db.site}/users/want_watch_videos")
-        cookies = Javdb.get_cookies()
-        for k, v in re.cookies.items():
-            cookies[k] = v
-        Javdb.set_cookies(cookies)
+        db.session.get(f"{db.site}/users/want_watch_videos")
         
-
-
+    db.save_cookies()
     logger.info("auto rate end.")
 
 def add_list(db,number,list_id):

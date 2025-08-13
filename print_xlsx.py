@@ -251,7 +251,7 @@ def parse_arguments():
     parser.add_argument('file_path', help='Excel文件路径')
     parser.add_argument('columns', nargs='?', default='', help='要显示的列索引（逗号分隔，如:1,2,3)，可选，默认为全部列')
     parser.add_argument('--start', type=int, default=0, help='起始行号，默认为0')
-    parser.add_argument('--limit', default='20', help='输出行数，默认为20，可设为"all"输出全部数据')
+    parser.add_argument('--limit', default='10', help='输出行数，默认为10，可设为"all"输出全部数据')
     parser.add_argument('--random', action='store_true', help='启用随机采样')
     parser.add_argument('--search', help='关键字检索内容（可选）')
     parser.add_argument('--search-columns', help='检索列索引（逗号分隔，可选，默认所有列）')

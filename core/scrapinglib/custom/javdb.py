@@ -3,6 +3,7 @@
 import re
 import os
 import json
+import requests
 from urllib.parse import urljoin
 from lxml import etree
 from utils.httprequest import request_session
@@ -67,10 +68,14 @@ class Javdb(Parser):
     def set_cookies(cookies):
         if os.path.isfile("javdb.cookies"):
             with open('javdb.cookies', 'r+') as f:
-                jsonstr = json.dumps(cookies, indent=1)
+                jsonstr = json.dumps(cookies, indent=4)
                 f.seek(0)
                 f.truncate()
                 f.write(jsonstr)
+    
+    def save_cookies(self):
+        cookies = requests.utils.dict_from_cookiejar(self.session.cookies)
+        self.set_cookies(cookies)
 
     def search(self, number: str):
         self.number = number
