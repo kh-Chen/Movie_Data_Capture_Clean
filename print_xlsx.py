@@ -163,6 +163,22 @@ def read_xlsx(file_path, cols=[], start=0, limit=20, use_random=False, search_st
         # 读取所有数据
         all_data = []
         for row_idx, row in enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1):
+            # 应用检索过滤
+            if search_str and row_idx != 1:
+                search_str = search_str.lower()
+                flag = False
+                for col_idx, cell_value in enumerate(row):
+                    # 如果指定了检索列，只检查这些列
+                    if search_cols and (col_idx + 1) not in search_cols:
+                        continue
+                        
+                    # 不区分大小写的模糊匹配
+                    if search_str in str(cell_value).lower():
+                        flag=True
+                        break
+                if not flag:
+                    continue
+
             data_line = []
             for col_idx in cols:
                 if col_idx == 0:  # 行号列
@@ -179,25 +195,13 @@ def read_xlsx(file_path, cols=[], start=0, limit=20, use_random=False, search_st
                 data_line.append(cell_data)
             all_data.append(data_line)
         
-        # 应用检索过滤（标题行保留）
+        
         header = all_data[0]
         content = all_data[1:]
         
-        if search_str:
-            # 处理检索列参数：将原始列索引转换为数据列索引
-            actual_search_cols = None
-            if search_cols:
-                # 将原始列索引映射到数据列中的位置
-                actual_search_cols = []
-                for col in search_cols:
-                    if col in cols:
-                        actual_search_cols.append(cols.index(col) + 1)
-            
-            content = filter_data(content, search_str, actual_search_cols)
-            print(f"检索匹配: {len(content)} 行")
-        
         # 处理分页
         total_rows = len(content)
+        start-=2
         start = max(0, min(start, total_rows))  # 确保start在有效范围内
         
         if use_random:  # 随机抽样

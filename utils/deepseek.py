@@ -1,60 +1,119 @@
 import logger
 import requests
 import json
+import datetime
+from .event import register_event
 
 G_APIURL = "https://api.deepseek.com/chat/completions"
 
-def call(api:str, model: str, prompt:str, text: str, stream:bool):
+G_PROMPT = {
+    "prompt_genterer": '''
+你是一位大模型提示词生成专家，请根据用户的需求编写一个智能助手的提示词，来指导大模型进行内容生成，要求：
+1. 以 Markdown 格式输出
+2. 贴合用户需求，描述智能助手的定位、能力、知识储备
+3. 提示词应清晰、精确、易于理解，在保持质量的同时，尽可能简洁
+4. 只输出提示词，不要输出多余解释
+'''
+}
 
-    header = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api}"
-    }
+exit_now = False
+def SIGINT_callback():
+    global exit_now
+    exit_now = True
+    logger.info(f"SIGINT_callback: exit_now={exit_now}")
 
-    data = {
-        "model": model, # 指定使用 R1 模型（deepseek-reasoner）或者 V3 模型（deepseek-chat）
-        "messages": [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": text}
-        ],
-        "stream": stream 
-    }
+class client():
+    key=''
+    model=''
+    prompt=''
+    stream=False
+    messages=[]
 
-    response = requests.post(G_APIURL, headers=header, json=data, stream=stream)
+    # 指定使用 R1 模型（deepseek-reasoner）或者 V3 模型（deepseek-chat）
+    # type 1=对话模式  2=机器调用
+    def __init__(self, key:str, model:str, prompt:str, type:int):
+        self.key = key
+        self.model = model
+        self.prompt = prompt
+        self.messages.append({"role": "system", "content": self.prompt})
+        self.stream = (type == 1)
+        register_event("SIGINT", callback=SIGINT_callback)
 
+    def get_header(self):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.key}"
+        }
     
-    if stream:
+    def get_data(self,usermsg:str):
+        self.messages.append({"role": "user", "content": usermsg})
+        return {
+            "model": self.model, 
+            "messages": self.messages,
+            "stream": self.stream 
+        }
+
+    def talk(self,response):
         flag = False
+        reasoning_content = ""
+        content = ""
         for chunk in response.iter_lines():
+            if exit_now:
+                response.close()
+                break
             if chunk:
                 decoded_chunk = chunk.decode('utf-8')
                 if decoded_chunk.startswith("data: "):
                     jsonstr = decoded_chunk[6:]
                     if jsonstr == "[DONE]":
-                        print("\n[DONE]")
+                        print("\n--[DONE]--")
                         break
                     
                     res = json.loads(decoded_chunk[6:])
                     obj = res["choices"][0]["delta"]
-                    reasoning = obj["reasoning_content"]
-                    content = obj["content"]
-                    if reasoning is None and content is not None and not flag:
-                        print("\n ----------------------------------")
+                    _reasoning = obj["reasoning_content"]
+                    _content = obj["content"]
+                    if _reasoning is None and _content is not None and not flag:
+                        print("\n =======================Think end======================================")
                         flag = True
-                    if reasoning is None and content is None:
-                        print(decoded_chunk)
+                    if _reasoning is not None:
+                        reasoning_content += _reasoning
+                        print(_reasoning, end="")
+                    elif _content is not None:
+                        content += _content
+                        print(_content, end="")
                     else:
-                        pstr = obj["reasoning_content"] if obj["content"] is None else obj["content"] 
-                        print(pstr, end="")
+                        print("error data: ",decoded_chunk)
+
                 else:
                     print("error data: ",decoded_chunk)
-        return None,None     
-    else:
-        if response.status_code == 200:
-            result = response.json()
-            message = result['choices'][0]['message']
-            return message['content'], message["reasoning_content"] if "reasoning_content" in message else None
+        self.messages.append({"role": "assistant", "content": content})
+
+
+
+    def call(self, text: str):
+        data = self.get_data(text)
+        response = requests.post(G_APIURL, headers=self.get_header(), json=data, stream=self.stream)
+
+        if self.stream:
+            self.talk(response)
         else:
-            logger.error(f"DeepSeek API Request Failed: {response.text} Status Code: {response.status_code}")
-            return None,None
-    
+            if response.status_code == 200:
+                result = response.json()
+                message = result['choices'][0]['message']
+                return message['content'], message["reasoning_content"] if "reasoning_content" in message else None
+            else:
+                logger.error(f"DeepSeek API Request Failed: {response.text} Status Code: {response.status_code}")
+                return None,None
+
+    def save(self):
+        current_time = datetime.datetime.now()
+        # 格式化为：年月日_时分秒
+        file_path = current_time.strftime("%Y%m%d_%H%M%S") + ".txt"
+
+        with open(file_path, 'w', encoding='utf-8') as file:
+            for msg in self.messages:
+                file.write(f'\n{msg["role"]}: \n{msg["content"]}')
+        
+            
+

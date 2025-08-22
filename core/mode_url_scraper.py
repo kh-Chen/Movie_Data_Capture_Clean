@@ -37,6 +37,17 @@ def run(arr:list):
 
     dirs = ["/mnt/f/1","/mnt/f/downloaded","/mnt/f/store"]
     
+    if not url.startswith("http"):
+        domain = config.getStrValue("overGFW.javdb")
+        if domain.endswith("/") and url.startswith("/"):
+            url = domain[:-1] + url
+        elif not domain.endswith("/") and not url.startswith("/"):
+            url = domain + "/" + url
+        else:
+            url = domain + url
+
+    logger.info(f'use url: {url}')
+
     for dir in dirs:
         filelist = os.listdir(dir)
         for file in filelist:
@@ -126,7 +137,7 @@ def javdb(url:str, sheet:openpyxl.worksheet.worksheet.Worksheet) :
 
             resp = session.get(url)
             tree = etree.fromstring(resp.text, etree.HTMLParser()) 
-            sleep()
+            sleep(10)
             datalen = 0
             if 'want_watch_videos' in url:
                 datalen = want_watch_videos(resp.url, tree, sheet, session)
@@ -174,9 +185,17 @@ def want_watch_videos(baseurl:str, tree:etree._Element, sheet:openpyxl.worksheet
             continue
 
         detail_url = urljoin(baseurl, detail_url)
-        data = get_data(detail_url,Javdb(session))
+
+        for i in range(3):
+            try:
+                data = get_data(detail_url,Javdb(session))
+                break
+            except Exception as e:
+                logger.error(f"get_data from url {detail_url} error.",e)
+
+
         if data['number'] is None or data['number'] == '':
-            logger.info(f"{data['number']} error.")
+            logger.info(f"{number} error.")
             continue
         else:
             logger.info(f"{data['number']} loaded.")
@@ -288,10 +307,11 @@ def getBestMagnet(arr):
             result = item
     return result
 
-def sleep():
+def sleep(add:int=0):
     if exit_now:
         return
     interval = config.getIntValue("common.interval")
+    interval += add
     if interval != 0:
         logger.info(f"Continue in {interval} seconds")
         time.sleep(interval)
