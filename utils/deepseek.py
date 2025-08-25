@@ -109,11 +109,11 @@ class client():
     def save(self):
         current_time = datetime.datetime.now()
         # 格式化为：年月日_时分秒
-        file_path = current_time.strftime("%Y%m%d_%H%M%S") + ".txt"
+        file_path = 'z_ai/'+current_time.strftime("%Y%m%d_%H%M%S") + ".txt"
 
         with open(file_path, 'w', encoding='utf-8') as file:
             for msg in self.messages:
-                file.write(f'\n{msg["role"]}: \n{msg["content"]}')
+                file.write(f'\n----------{msg["role"]}: \n{msg["content"]}')
         
             
 

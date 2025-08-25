@@ -164,3 +164,4 @@ cython_debug/
 *_cover/
 monitor.sh
 start_monitor.sh
+z_ai/
