@@ -23,11 +23,11 @@ def SIGINT_callback():
     logger.info(f"SIGINT_callback: exit_now={exit_now}")
 
 class client():
-    key=''
-    model=''
-    prompt=''
-    stream=False
-    messages=[]
+    # key=''
+    # model=''
+    # prompt=''
+    # stream=False
+    # messages=[]
 
     # 指定使用 R1 模型（deepseek-reasoner）或者 V3 模型（deepseek-chat）
     # type 1=对话模式  2=机器调用
@@ -35,9 +35,16 @@ class client():
         self.key = key
         self.model = model
         self.prompt = prompt
+        self.messages=[]
         self.messages.append({"role": "system", "content": self.prompt})
         self.stream = (type == 1)
         register_event("SIGINT", callback=SIGINT_callback)
+
+    def append_user(self,msg:str):
+        self.messages.append({"role": "user", "content": msg})
+
+    def append_assistant(self,msg:str):
+        self.messages.append({"role": "assistant", "content": msg})
 
     def get_header(self):
         return {
@@ -46,7 +53,7 @@ class client():
         }
     
     def get_data(self,usermsg:str):
-        self.messages.append({"role": "user", "content": usermsg})
+        self.append_user(usermsg)
         return {
             "model": self.model, 
             "messages": self.messages,

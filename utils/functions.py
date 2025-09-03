@@ -90,6 +90,37 @@ def special_characters_replacement(text) -> str:
             replace("&", '＆')
             )
 
+def read_txt_file(file_path, encoding='utf-8'):
+    """
+    读取文本文件中的所有内容
+    
+    Args:
+        file_path (str): 文本文件的路径
+        encoding (str): 文件编码，默认为utf-8
+    
+    Returns:
+        str: 文件中的所有文本内容
+        
+    Raises:
+        FileNotFoundError: 当文件不存在时
+        IOError: 当读取文件发生错误时
+    """
+    try:
+        with open(file_path, 'r', encoding=encoding) as file:
+            content = file.read()
+        return content
+    except FileNotFoundError:
+        raise FileNotFoundError(f"文件未找到: {file_path}")
+    except UnicodeDecodeError:
+        # 如果默认编码失败，尝试其他常见编码
+        try:
+            with open(file_path, 'r', encoding='gbk') as file:
+                content = file.read()
+            return content
+        except:
+            raise IOError(f"无法以utf-8或gbk编码读取文件: {file_path}")
+    except Exception as e:
+        raise IOError(f"读取文件时发生错误: {str(e)}")
 
 # if __name__ == '__main__':
-#     print(legalization_of_file_path("/mnt/f/store/JAV_output/NwmXrB 2023 PRED-458-C [4.45∕135] 竹内有紀 我太爱比父亲大一岁的大叔上司了。无法抗拒体液和粘膜持续接触的快感，继续出轨….mp4"))
+#     print()
