@@ -1,6 +1,7 @@
 import re
 import os
 import time
+import random
 import traceback
 from urllib.parse import urljoin
 import json
@@ -313,6 +314,7 @@ def sleep(add:int=0):
     interval = config.getIntValue("common.interval")
     interval += add
     if interval != 0:
-        logger.info(f"Continue in {interval} seconds")
-        time.sleep(interval)
-    return interval
+        rs = random.randint(1, interval)
+        logger.info(f"Continue in {rs} seconds")
+        time.sleep(rs)
+    return rs

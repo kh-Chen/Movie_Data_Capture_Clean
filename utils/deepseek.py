@@ -2,7 +2,7 @@ import logger
 import requests
 import json
 import datetime
-from .event import register_event
+from . import event,functions
 
 G_APIURL = "https://api.deepseek.com/chat/completions"
 
@@ -20,7 +20,7 @@ exit_now = False
 def SIGINT_callback():
     global exit_now
     exit_now = True
-    logger.info(f"SIGINT_callback: exit_now={exit_now}")
+    logger.info(f"SIGINT_callback: exit_now={exit_now}")    
 
 class client():
     # key=''
@@ -38,7 +38,32 @@ class client():
         self.messages=[]
         self.messages.append({"role": "system", "content": self.prompt})
         self.stream = (type == 1)
-        register_event("SIGINT", callback=SIGINT_callback)
+        current_time = datetime.datetime.now()
+        # 格式化为：年月日_时分秒
+        self.savepath = 'z_ai/'+current_time.strftime("%Y%m%d_%H%M%S") + ".txt"
+        event.register_event("SIGINT", callback=SIGINT_callback)
+    
+    def load_history(self,filepath:str):
+        self.savepath = filepath
+        txt = functions.read_txt_file(filepath)
+        self.messages=[]
+        lines = txt.split("\n")
+        strcache = ""
+        rolecache = ""
+        rolearr = ['system','user','assistant']
+        for line in lines:
+            if line.startswith("----------"):
+                role = line[10:].strip()[:-1]
+                if role in rolearr:
+                    if rolecache!= '':
+                        self.messages.append({"role": rolecache, "content": strcache})
+                        strcache = ''
+                    rolecache = role
+                else:
+                    strcache += line + "\n"
+            else:
+                strcache += line + "\n"
+        self.messages.append({"role": rolecache, "content": strcache})
 
     def append_user(self,msg:str):
         self.messages.append({"role": "user", "content": msg})
@@ -114,11 +139,7 @@ class client():
                 return None,None
 
     def save(self):
-        current_time = datetime.datetime.now()
-        # 格式化为：年月日_时分秒
-        file_path = 'z_ai/'+current_time.strftime("%Y%m%d_%H%M%S") + ".txt"
-
-        with open(file_path, 'w', encoding='utf-8') as file:
+        with open(self.savepath, 'w', encoding='utf-8') as file:
             for msg in self.messages:
                 file.write(f'\n----------{msg["role"]}: \n{msg["content"]}')
         
